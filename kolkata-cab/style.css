@@ -1,0 +1,158 @@
+:root {
+  color-scheme: dark;
+  --ink: #edf2ed;
+  --muted: #a2afb4;
+  --amber: #f3bd4c;
+  --green: #44d58b;
+  --red: #ed766c;
+  --glass: rgba(7, 14, 23, .58);
+  --border: rgba(243, 189, 76, .25);
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #08111a; color: var(--ink); font-family: Manrope, "Segoe UI", sans-serif; touch-action: none; }
+.game-shell { position: relative; width: 100vw; height: 100dvh; min-height: 320px; overflow: hidden; background: #09131d; }
+#game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.glass-card { background: var(--glass); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.32), inset 0 1px rgba(255,255,255,.035); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; }
+.eyebrow { display: block; color: #d4c29a; font: 500 clamp(8px, .7vw, 10px) "DM Mono", monospace; letter-spacing: 1px; text-transform: uppercase; }
+.cash-card { position: absolute; z-index: 3; top: 12px; left: 12px; width: min(30vw, 560px); min-width: 0; min-height: 76px; padding: 10px 11px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cash-cell { min-width: 0; padding: 0 9px; border-right: 1px solid rgba(230,226,209,.13); }
+.cash-cell:first-child { padding-left: 1px; }
+.cash-cell:last-child { border: 0; padding-right: 0; }
+.cash-cell strong { display: block; min-width: 0; margin-top: 5px; color: var(--amber); font: 500 clamp(14px, 1.5vw, 22px) "DM Mono", monospace; letter-spacing: 0; text-shadow: 0 0 14px rgba(243,189,76,.25); white-space: nowrap; }
+.cash-cell small { display: -webkit-box; margin-top: 4px; color: #b7c1c1; font: 8px "DM Mono", monospace; letter-spacing: .25px; white-space: normal; overflow: hidden; overflow-wrap: break-word; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.wanted-panel { position: absolute; z-index: 3; top: 12px; left: 50%; transform: translateX(-50%); width: min(34vw, 560px); min-width: 0; padding: 9px 12px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.wanted-panel strong { min-width: 0; color: #d9e1df; font: 500 clamp(8px, .72vw, 10px) "DM Mono", monospace; letter-spacing: .45px; text-align: center; white-space: nowrap; }
+.stars { display: flex; flex: 0 0 auto; gap: 3px; }
+.star { color: #7b817e; font-size: 15px; line-height: 1; }
+.star.filled { color: var(--amber); text-shadow: 0 0 10px rgba(255,190,58,.7); }
+.toast { position: absolute; z-index: 5; top: 58px; left: 50%; transform: translate(-50%, -5px); max-width: min(70vw, 520px); padding: 7px 11px; color: #f0ca74; font: 500 9px "DM Mono", monospace; letter-spacing: .5px; text-align: center; opacity: 0; transition: opacity .2s, transform .2s; }
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }
+.toast span { display: block; margin: 2px 0 0; color: #c0c8c8; letter-spacing: 0; }
+.map-stack { position: absolute; z-index: 4; top: 12px; right: 12px; width: 78px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; pointer-events: none; }
+.minimap-card { width: 78px; padding: 5px; text-align: center; }
+.minimap-card canvas { display: block; width: 60px; height: 60px; margin: auto; border-radius: 6px; pointer-events: none; }
+.map-caption { display: block; margin-top: 3px; color: #e0b951; font: 6px "DM Mono", monospace; letter-spacing: .4px; }
+.camera-controls { display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+.glass-button { min-height: 18px; padding: 3px 4px; border: 1px solid var(--border); border-radius: 7px; background: rgba(7,14,23,.72); color: #eef0e9; font: 700 7px Manrope, sans-serif; letter-spacing: .4px; pointer-events: auto; }
+.glass-button kbd { margin-left: 2px; color: var(--amber); }
+.pause-button { color: var(--amber); }
+.pause-button span { margin-left: 3px; color: #eee; }
+.cash-card, .wanted-panel, .map-stack, .passenger-card, .instrument-cluster, .helpbar { pointer-events: none; }
+.passenger-card { position: absolute; z-index: 2; top: 98px; left: 12px; width: min(30vw, 440px); max-width: 30vw; padding: 10px 12px; }
+.passenger-card[hidden] { display: none; }
+.passenger-kicker { color: var(--amber); }
+.passenger-card > strong { display: block; margin-top: 4px; color: #fff0cf; font: 600 clamp(13px, 1.1vw, 17px) "DM Mono", monospace; letter-spacing: .4px; }
+.destination-line { display: block; margin-top: 4px; color: #aeb9ba; font: 8px "DM Mono", monospace; letter-spacing: .6px; overflow-wrap: break-word; }
+.destination-line b { margin-left: 4px; color: #f0c76a; font-weight: 500; }
+.passenger-card p { display: -webkit-box; margin: 6px 0 0; color: #c9d0cb; font: italic 10px Manrope, sans-serif; line-height: 1.3; overflow: hidden; overflow-wrap: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.instrument-cluster { position: absolute; z-index: 3; left: 12px; bottom: 44px; transform: none; width: min(34vw, 650px); min-width: 0; padding: 9px 11px 10px; }
+.instrument-topline { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; border-bottom: 1px solid rgba(230,226,209,.12); }
+.instrument-topline .eyebrow { font-size: clamp(8px, .7vw, 10px); }
+.engine-light { width: 7px; height: 7px; border-radius: 50%; background: #58d69d; box-shadow: 0 0 9px #58d69d; }
+.instrument-readouts { display: grid; grid-template-columns: 1fr .62fr 1.2fr; align-items: center; padding: 6px 0; }
+.instrument-readouts > div { min-width: 0; min-height: 43px; padding: 0 9px; border-right: 1px solid rgba(230,226,209,.13); }
+.instrument-readouts > div:first-child { padding-left: 2px; }
+.instrument-readouts > div:last-child { border: 0; padding-right: 2px; }
+.speed-readout strong { display: inline-block; margin-top: 2px; color: #f6f3e8; font: 500 clamp(20px, 2vw, 29px) "DM Mono", monospace; }
+.unit { margin-left: 4px; color: #b6c0bf; font: 8px "DM Mono", monospace; letter-spacing: .5px; }
+.speed-track, .rpm-track { height: 4px; margin-top: 5px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.15); }
+.speed-track i { display: block; width: 0; height: 100%; border-radius: 4px; background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.gear-readout { text-align: center; }
+.gear-readout strong { display: block; margin-top: 4px; color: var(--amber); font: 500 clamp(17px, 1.5vw, 22px) "DM Mono", monospace; }
+.rpm-readout > strong { display: block; margin-top: 4px; color: #40e599; font: 500 clamp(14px, 1.25vw, 18px) "DM Mono", monospace; white-space: nowrap; }
+.rpm-readout > strong small { color: #aab8b5; font: 8px "DM Mono", monospace; letter-spacing: .5px; }
+.rpm-track { height: 5px; }
+.rpm-track i { display: block; width: 0; height: 100%; background: linear-gradient(90deg,#29c77a,#f0c254,#ee6656); box-shadow: 0 0 8px rgba(70,231,151,.35); }
+.fare-readout { display: flex; align-items: end; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: 1px solid rgba(230,226,209,.12); }
+.fare-readout > div { min-width: 0; }
+.fare-readout .eyebrow { white-space: normal; }
+.fare-readout strong { display: block; margin-top: 2px; color: #ffc957; font: 500 clamp(16px, 1.5vw, 22px) "DM Mono", monospace; text-shadow: 0 0 14px rgba(255,185,50,.27); }
+.fare-rule { flex: 0 0 auto; padding-bottom: 3px; color: #d5c28e; font: 8px "DM Mono", monospace; letter-spacing: .3px; }
+.touch-controls { position: absolute; z-index: 3; right: 12px; bottom: 44px; display: flex; align-items: flex-end; gap: 28px; pointer-events: none; }
+.pedals { display: flex; align-items: flex-end; gap: 10px; padding-bottom: 4px; pointer-events: none; }
+.pedal { width: 90px; height: 110px; padding: 8px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(255,255,255,.22); border-radius: 11px; background: rgba(5,13,20,.78); color: #e6ece8; box-shadow: 0 7px 20px rgba(0,0,0,.4); touch-action: none; user-select: none; pointer-events: auto; }
+.pedal span:last-child { max-width: 100%; font: 700 8px "DM Mono", monospace; letter-spacing: .2px; text-align: center; line-height: 1.15; }
+.brake span:last-child::after { content: " \00B7 HOLD FOR REVERSE"; }
+.pedal-icon { font-size: 17px; }
+.accelerator { border-color: rgba(54,216,132,.55); }
+.accelerator .pedal-icon { color: var(--green); }
+.brake { border-color: rgba(236,103,91,.6); }
+.brake .pedal-icon { color: var(--red); }
+.pedal.active { background: rgba(49,184,109,.48); transform: translateY(2px); }
+.brake.active { background: rgba(185,67,60,.57); }
+.steering { width: 166px; height: 180px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; color: #e4ebe6; touch-action: none; user-select: none; pointer-events: auto; }
+.wheel-ring { position: relative; width: 150px; height: 150px; border: 11px solid #171d20; border-radius: 50%; box-shadow: inset 0 0 0 2px #8c928b, 0 0 0 1px #080d10, 0 7px 18px #0009; background: radial-gradient(circle,#d3b041 0 11%,#54441d 12% 18%,transparent 19%); transform: rotate(var(--wheel-turn, 0deg)); transition: transform 80ms linear; }
+.wheel-ring:before, .wheel-ring:after { content: ""; position: absolute; left: 50%; top: 0; width: 7px; height: 54px; transform: translateX(-50%); border-radius: 5px; background: linear-gradient(90deg,#606863,#d0c7a7,#414a48); }
+.wheel-ring:after { top: auto; bottom: 0; height: 50px; }
+.wheel-ring i, .wheel-ring b { position: absolute; left: 11px; top: 27px; width: 53px; height: 7px; transform: rotate(34deg); border-radius: 5px; background: linear-gradient(#a8aaa0,#414947); }
+.wheel-ring b { left: auto; right: 11px; transform: rotate(-34deg); }
+.wheel-caption { color: #ece3c8; font: 8px "DM Mono", monospace; letter-spacing: 1.3px; }
+.helpbar { position: absolute; z-index: 2; left: 50%; bottom: 4px; transform: translateX(-50%); display: flex; gap: 11px; align-items: center; color: #c0c9c7; font: 8px "DM Mono", monospace; letter-spacing: .3px; white-space: nowrap; text-shadow: 0 1px 4px #000; }
+.helpbar span { display: flex; align-items: center; gap: 3px; }
+.helpbar kbd { padding: 1px 3px; border: 1px solid rgba(255,255,255,.25); border-radius: 3px; background: rgba(4,10,15,.75); color: #f0c86e; font: 8px "DM Mono", monospace; }
+@media (min-width: 900px) {
+  .instrument-cluster, .touch-controls { bottom: 46px; }
+}
+@media (max-width: 899px) { .helpbar { display: none; } }
+@media (max-width: 700px) {
+  .cash-card { top: 8px; left: 8px; width: min(30vw, 330px); min-height: 64px; padding: 7px 6px; }
+  .cash-cell { padding: 0 5px; }
+  .cash-cell small { font-size: 7px; letter-spacing: 0; }
+  .wanted-panel { top: 8px; width: min(34vw, 287px); padding: 7px 6px; gap: 5px; }
+  .wanted-panel strong { font-size: 7px; letter-spacing: 0; }
+  .star { font-size: 12px; }
+  .toast { top: 78px; max-width: 68vw; font-size: 8px; }
+  .map-stack { top: 8px; right: 8px; width: 72px; }
+  .minimap-card { width: 72px; padding: 4px; }
+  .minimap-card canvas { width: 54px; height: 54px; }
+  .glass-button { min-height: 21px; padding: 3px; font-size: 6px; }
+  .passenger-card { top: 82px; left: 8px; width: min(30vw, 330px); max-width: 30vw; padding: 7px 8px; }
+  .passenger-card p { font-size: 9px; }
+  .instrument-cluster { left: 8px; bottom: 12px; width: min(34vw, 400px); padding: 7px 8px; }
+  .instrument-readouts { padding: 4px 0; }
+  .instrument-readouts > div { min-height: 36px; padding: 0 6px; }
+  .fare-rule { font-size: 7px; }
+  .touch-controls { right: 8px; bottom: 12px; gap: 28px; }
+  .pedals { gap: 6px; padding-bottom: 3px; }
+  .pedal { width: 62px; height: 78px; padding: 4px 2px; gap: 4px; }
+  .pedal span:last-child { font-size: 6px; letter-spacing: 0; }
+  .pedal-icon { font-size: 14px; }
+  .steering { width: 106px; height: 120px; }
+  .wheel-ring { width: 98px; height: 98px; border-width: 8px; }
+  .wheel-ring:before, .wheel-ring:after { width: 5px; height: 34px; }
+  .wheel-ring:after { height: 31px; }
+  .wheel-ring i, .wheel-ring b { top: 18px; left: 7px; width: 36px; height: 5px; }
+  .wheel-ring b { left: auto; right: 7px; }
+}
+@media (max-height: 520px) {
+  .cash-card { min-height: 60px; padding-top: 6px; padding-bottom: 6px; }
+  .cash-cell strong { margin-top: 3px; }
+  .cash-cell small { margin-top: 2px; font-size: 7px; }
+  .wanted-panel { padding-top: 6px; padding-bottom: 6px; }
+  .map-stack { top: 8px; }
+  .minimap-card canvas { width: 48px; height: 48px; }
+  .minimap-card { width: 66px; padding: 3px; }
+  .map-stack { width: 66px; }
+  .map-caption { font-size: 5px; }
+  .glass-button { min-height: 19px; }
+  .passenger-card { top: 84px; padding: 5px 7px; }
+  .passenger-card p { display: none; }
+  .passenger-card > strong { font-size: 12px; margin-top: 2px; }
+  .destination-line { margin-top: 2px; font-size: 7px; }
+  .instrument-cluster, .touch-controls { bottom: 8px; }
+  .instrument-cluster { padding: 5px 7px; }
+  .instrument-topline { padding-bottom: 3px; }
+  .instrument-readouts { padding: 2px 0; }
+  .instrument-readouts > div { min-height: 32px; }
+  .fare-readout { padding-top: 3px; }
+  .pedal { width: 58px; height: 68px; }
+  .steering { width: 88px; height: 94px; }
+  .wheel-ring { width: 78px; height: 78px; }
+  .wheel-ring:before, .wheel-ring:after { height: 26px; }
+  .wheel-ring:after { height: 23px; }
+  .wheel-ring i, .wheel-ring b { top: 13px; left: 5px; width: 30px; }
+  .wheel-ring b { left: auto; right: 5px; }
+}
+.cash-cell.wallet-card.is-credit { animation: credit-pop .42s ease-out; }
+.fare-card.is-active .fare-rule { color: #ffe078; text-shadow: 0 0 8px rgba(255,191,73,.4); }
+@keyframes credit-pop { 50% { transform: scale(1.025); border-color: #65e4a7; } }
