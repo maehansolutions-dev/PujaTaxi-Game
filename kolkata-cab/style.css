@@ -156,3 +156,66 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background:
 .cash-cell.wallet-card.is-credit { animation: credit-pop .42s ease-out; }
 .fare-card.is-active .fare-rule { color: #ffe078; text-shadow: 0 0 8px rgba(255,191,73,.4); }
 @keyframes credit-pop { 50% { transform: scale(1.025); border-color: #65e4a7; } }
+
+/* Visual and control refinement */
+.instrument-cluster { width: min(30vw, 560px); max-width: 30vw; bottom: max(44px, env(safe-area-inset-bottom)); }
+.cash-card { width: min(30vw, 560px); }
+#tripStatus { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cash-cell:nth-child(2) { overflow: hidden; }
+.touch-controls { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); gap: 40px; align-items: flex-end; }
+.pedals { align-items: flex-end; gap: 12px; padding: 0; }
+.pedal {
+  position: relative; flex: 0 0 auto; padding: 5px; display: flex; align-items: stretch; justify-content: stretch;
+  border: 1px solid rgba(204,214,212,.55); border-radius: 12px; background: linear-gradient(145deg,#89918e,#424a49 42%,#202727);
+  box-shadow: inset 0 1px 2px #fff5, 0 8px 20px #0008; overflow: visible; transform-style: preserve-3d;
+}
+.pedal.brake { width: clamp(66px, 6.2vw, 84px); height: clamp(92px, 18vh, 120px); border-color: #d9696177; }
+.pedal.accelerator { width: clamp(58px, 5.3vw, 72px); height: clamp(100px, 20vh, 132px); border-color: #44d58b88; }
+.pedal-plate { display: flex; width: 100%; flex: 1; align-items: stretch; padding: 4px; border-radius: 8px; background: linear-gradient(90deg,#535d5d,#a6acab 14%,#586160 24%,#a6acab 83%,#424b4a); }
+.pedal-pad { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: repeating-linear-gradient(0deg,#202829 0 4px,#394241 4px 7px,#1b2223 7px 11px); box-shadow: inset 0 0 16px #000b, 0 0 13px var(--pedal-glow); transition: transform .12s ease, box-shadow .12s ease; }
+.brake { --pedal-glow: rgba(239,80,68,.28); }
+.accelerator { --pedal-glow: rgba(50,232,136,.28); }
+.brake .pedal-pad { border-color: #ef655c88; }
+.accelerator .pedal-pad { border-color: #48dc8b88; }
+.pedal-icon { color: #e9efea; font-size: clamp(13px, 1.2vw, 18px); }
+.accelerator .pedal-icon { color: #64eea4; }
+.brake .pedal-icon { color: #ff8279; }
+.pedal-label { color: #f3eee1; font: 700 clamp(7px, .62vw, 9px) "DM Mono", monospace; letter-spacing: .8px; }
+.pedal.active .pedal-pad { transform: perspective(180px) rotateX(14deg) translateY(4px); box-shadow: inset 0 0 16px #000b, 0 0 21px var(--pedal-glow); }
+.brake .pedal-progress { position: absolute; inset: -4px; border-radius: 15px; pointer-events: none; background: conic-gradient(#ff7468 var(--hold-progress, 0deg), transparent 0); -webkit-mask: radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px)); mask: radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px)); opacity: .9; }
+.steering { width: clamp(150px, 16vw, 220px); height: auto; aspect-ratio: 1 / 1; padding: 0; gap: 0; flex: 0 0 auto; justify-content: flex-start; }
+.steering-wheel-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 7px 10px #0009); transform: rotate(var(--wheel-turn, 0deg)); transform-origin: 50% 50%; transition: transform .25s cubic-bezier(.2,.75,.3,1); }
+.wheel-caption { position: absolute; bottom: -14px; color: #eee5cf; font: 700 clamp(7px, .62vw, 9px) "DM Mono", monospace; letter-spacing: 1.3px; }
+.pedal, .steering, .help-toggle { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.help-toggle { position: absolute; z-index: 5; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); width: 28px; height: 28px; min-height: 0; padding: 0; border-radius: 50%; font-size: clamp(10px, .8vw, 12px); }
+.help-panel { position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 36px); display: grid; gap: 5px; width: min(240px, 38vw); padding: 11px 13px; color: #e7ece7; font: 500 clamp(8px, .68vw, 10px) "DM Mono", monospace; pointer-events: auto; }
+.help-panel[hidden] { display: none; }
+.help-panel strong { color: var(--amber); font-size: clamp(8px, .7vw, 10px); letter-spacing: .7px; }
+.help-panel kbd { color: #f3cb69; }
+.cash-card, .wanted-panel, .passenger-card, .instrument-cluster { font-size: clamp(7px, .72vw, 10px); }
+.eyebrow, .cash-cell small, .wanted-panel strong, .toast, .map-caption, .glass-button, .passenger-card > strong, .destination-line, .passenger-card p, .instrument-topline .eyebrow, .speed-readout strong, .unit, .gear-readout strong, .rpm-readout > strong, .fare-readout strong, .fare-rule { font-size: clamp(6px, .75vw, 11px); }
+.speed-readout strong { font-size: clamp(19px, 2vw, 29px); }
+.gear-readout strong { font-size: clamp(16px, 1.5vw, 22px); }
+.fare-readout strong { font-size: clamp(15px, 1.5vw, 22px); }
+.rpm-readout > strong { font-size: clamp(13px, 1.25vw, 18px); }
+@media (pointer: coarse) { .help-toggle, .help-panel { display: none !important; } }
+@media (max-width: 899px) {
+  .instrument-cluster { width: min(30vw, 330px); max-width: 30vw; bottom: max(12px, env(safe-area-inset-bottom)); }
+  .touch-controls { gap: 40px; }
+}
+@media (max-width: 700px) {
+  .cash-card { width: min(43vw, 350px); }
+  .instrument-cluster { width: min(30vw, 270px); max-width: 30vw; }
+  .touch-controls { right: max(8px, env(safe-area-inset-right)); gap: 40px; }
+  .pedals { gap: 7px; }
+  .pedal.brake { width: clamp(54px, 8vw, 68px); height: clamp(82px, 24vh, 104px); }
+  .pedal.accelerator { width: clamp(50px, 7vw, 62px); height: clamp(90px, 26vh, 114px); }
+  .steering { width: clamp(128px, 17vw, 150px); }
+}
+@media (max-height: 520px) {
+  .touch-controls { bottom: max(7px, env(safe-area-inset-bottom)); gap: 40px; }
+  .pedal.brake { height: clamp(68px, 27vh, 92px); }
+  .pedal.accelerator { height: clamp(76px, 30vh, 104px); }
+  .steering { width: clamp(116px, 16vh, 146px); }
+  .instrument-cluster { bottom: max(8px, env(safe-area-inset-bottom)); }
+}

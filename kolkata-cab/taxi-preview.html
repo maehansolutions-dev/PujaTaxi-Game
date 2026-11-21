@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#25272a">
+  <title>Kolkata Cab · Taxi Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; font-family: Manrope, sans-serif; background: #25272a; color: #f2eee4; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body { background: radial-gradient(ellipse at 50% 34%, #858889 0%, #55585a 55%, #303236 100%); }
+    #preview { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .topbar { position: fixed; z-index: 2; top: 18px; left: 20px; right: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
+    .title { padding: 10px 14px; border: 1px solid #ffffff2e; border-radius: 10px; background: #171a1dbd; box-shadow: 0 8px 26px #0004; }
+    .title strong { display: block; font-size: 13px; letter-spacing: 1.3px; }
+    .title span, .stats { color: #c5c8c5; font: 10px "DM Mono", monospace; letter-spacing: .4px; }
+    .stats { padding: 12px 14px; border: 1px solid #ffffff2e; border-radius: 9px; background: #171a1dbd; }
+    .views { position: fixed; z-index: 3; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 8px; padding: 7px; border: 1px solid #ffffff2e; border-radius: 13px; background: #171a1dd9; box-shadow: 0 8px 24px #0005; }
+    button { min-width: 76px; padding: 10px 13px; border: 1px solid #ffffff24; border-radius: 8px; background: #2a2e31; color: #eee8db; font: 700 10px "DM Mono", monospace; letter-spacing: .7px; cursor: pointer; }
+    button:hover, button.active { border-color: #e3b64a; background: #59471e; color: #ffe08c; }
+    @media (max-width: 520px) { .topbar { top: 10px; left: 10px; right: 10px; } .views { bottom: 12px; gap: 4px; } button { min-width: 62px; padding: 9px 8px; font-size: 9px; } }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="preview" aria-label="Rotating three-dimensional Kolkata Ambassador taxi preview"></canvas>
+  <div class="topbar">
+    <div class="title"><strong>KOLKATA CAB · AMBASSADOR</strong><span>PROCEDURAL TAXI MODEL · WB 19 A 7055</span></div>
+    <div class="stats" id="triangleCount">TRIANGLES · CALCULATING</div>
+  </div>
+  <nav class="views" aria-label="Taxi camera views">
+    <button type="button" data-view="front">FRONT</button>
+    <button type="button" data-view="rear">REAR</button>
+    <button type="button" data-view="side">SIDE</button>
+    <button type="button" data-view="threequarter" class="active">3/4</button>
+  </nav>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createTaxi } from './src/vehicles.js';
+
+    const canvas = document.querySelector('#preview');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(innerWidth, innerHeight, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x777a7b);
+    scene.add(new THREE.HemisphereLight(0xe5e8eb, 0x4b4239, 1.65));
+    const sun = new THREE.DirectionalLight(0xffefda, 2.5);
+    sun.position.set(-4, 8, -5);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    scene.add(sun);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: 0x777a7b }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.015;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const taxi = createTaxi();
+    taxi.traverse((object) => { if (object.isMesh) { object.castShadow = true; object.receiveShadow = true; } });
+    scene.add(taxi);
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+    const target = new THREE.Vector3(0, 0.92, 0);
+    const views = {
+      front: new THREE.Vector3(0, 1.05, -7.3),
+      rear: new THREE.Vector3(0, 1.05, 7.3),
+      side: new THREE.Vector3(7.3, 1.2, 0),
+      threequarter: new THREE.Vector3(4.6, 2.65, -5.7),
+    };
+    camera.position.copy(views.threequarter);
+    let autoRotate = true;
+    const wantedCamera = new THREE.Vector3().copy(views.threequarter);
+    document.querySelectorAll('[data-view]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('active', item === button));
+        const view = button.dataset.view;
+        taxi.rotation.y = 0;
+        wantedCamera.copy(views[view]);
+        autoRotate = view === 'threequarter';
+      });
+    });
+
+    let triangles = 0;
+    taxi.traverse((object) => {
+      if (!object.isMesh || !object.geometry) return;
+      const geometry = object.geometry;
+      const count = geometry.index ? geometry.index.count : geometry.attributes.position.count;
+      triangles += Math.floor(count / 3);
+    });
+    document.querySelector('#triangleCount').textContent = `TRIANGLES · ${triangles.toLocaleString()}`;
+
+    function resize() {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(innerWidth, innerHeight, false);
+    }
+    window.addEventListener('resize', resize);
+    const clock = new THREE.Clock();
+    function frame() {
+      const dt = Math.min(clock.getDelta(), 0.04);
+      if (autoRotate) taxi.rotation.y += dt * 0.22;
+      camera.position.lerp(wantedCamera, 1 - Math.exp(-5 * dt));
+      camera.lookAt(target);
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
