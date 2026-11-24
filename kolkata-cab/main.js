@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CONFIG, HORIZON_COLOUR, createWorld } from './src/world.js';
-import { createTaxi, setTaxiBraking } from './src/vehicles.js';
+import { createTaxi, setTaxiBraking, updateTaxiWheels } from './src/vehicles.js';
 import { createPassengerSystem } from './src/passengers.js';
 import { createHud } from './src/ui.js';
 import { createTrafficSystem } from './src/traffic.js';
@@ -25,6 +25,18 @@ const scene = new THREE.Scene();
 const road = createWorld(scene, renderer);
 const taxi = createTaxi();
 scene.add(taxi);
+const headLight = new THREE.SpotLight(0xffe4b0, 28, 52, Math.PI / 4.2, 0.55, 1.4);
+headLight.position.set(0, 1.05, -2.0);
+headLight.target.position.set(0, 0.1, -18);
+taxi.add(headLight, headLight.target);
+
+// const tailLightPool = new THREE.PointLight(0xff3022, 4.5, 10, 1.8);
+// tailLightPool.position.set(0, 0.85, 2.55);
+// taxi.add(tailLightPool);
+
+const tailLightPool = new THREE.PointLight(0xff2a1e, 1.35, 7, 2.0);
+tailLightPool.position.set(0, 0.45, 2.85);
+taxi.add(tailLightPool);
 
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 700);
 const composer = new EffectComposer(renderer);
@@ -145,6 +157,7 @@ function update(dt) {
   taxi.rotation.z = -state.steer * Math.min(0.065, Math.abs(state.speed) * 0.0012);
   taxi.userData.body.rotation.z = -state.steer * 0.028;
   taxi.userData.body.rotation.x = braking && state.speed > 1 ? -0.027 : accelerating ? 0.009 : 0;
+  updateTaxiWheels(taxi, dt, state.speed * (0.38 / 3.6), -state.steer * 0.32);
   passengers.update(state.lateral, state.z, state.speed, dt);
   hud.update(passengers.getSnapshot(state.lateral, state.z), state.lateral, state.z);
   traffic.update(state.lateral, state.z, state.speed, dt, camera.position);

@@ -142,12 +142,29 @@ function makeInstance(geometry, material, max) {
 }
 
 export function createTrafficSystem(scene, config, onEvent = () => {}) {
-  const bodyMesh = makeInstance(new THREE.BoxGeometry(1.72, 0.72, 3.45), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), config.trafficCount);
-  const cabinMesh = makeInstance(new THREE.BoxGeometry(1.48, 0.68, 1.75), new THREE.MeshLambertMaterial({ color: 0x334044, flatShading: true }), config.trafficCount);
-  const wheelMesh = makeInstance(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 9), new THREE.MeshLambertMaterial({ color: 0x222627, flatShading: true }), config.trafficCount * 4);
+const bodyMesh = makeInstance(
+    new THREE.BoxGeometry(1.72, 0.72, 3.45),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, metalness: 0.25 }),
+    config.trafficCount
+  );
+  const cabinMesh = makeInstance(
+    new THREE.BoxGeometry(1.48, 0.68, 1.75),
+    new THREE.MeshStandardMaterial({ color: 0x162028, roughness: 0.12, metalness: 0.6 }),
+    config.trafficCount
+  );
+  const wheelMesh = makeInstance(
+    new THREE.CylinderGeometry(0.31, 0.31, 0.2, 9),
+    new THREE.MeshStandardMaterial({ color: 0x141719, roughness: 0.88, metalness: 0.05 }),
+    config.trafficCount * 4
+  );
   wheelMesh.geometry.rotateZ(Math.PI / 2);
-  const lampMesh = makeInstance(new THREE.BoxGeometry(0.2, 0.16, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }), config.trafficCount * 4);
-  scene.add(bodyMesh, cabinMesh, wheelMesh, lampMesh);
+  const lampMesh = makeInstance(
+    new THREE.BoxGeometry(0.22, 0.16, 0.12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+    config.trafficCount * 4
+  );
+  // const lampMesh = makeInstance(new THREE.BoxGeometry(0.2, 0.16, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }), config.trafficCount * 4);
+  // scene.add(bodyMesh, cabinMesh, wheelMesh, lampMesh);
 
   const agents = Array.from({ length: config.trafficCount }, (_, i) => {
     const direction = i % 2 ? 1 : -1;
