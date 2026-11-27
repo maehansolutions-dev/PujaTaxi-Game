@@ -1,3 +1,17 @@
+import {
+  ALLEY_LENGTH,
+  ALLEY_WIDTH,
+  CROSS_STREET_LENGTH,
+  CROSS_STREET_WIDTH,
+  ROAD_ALLEY_OFFSET,
+  ROAD_BLOCK_SPACING,
+  VICTORIA_PLAZA_Z,
+  VICTORIA_ROAD_WIDTH,
+  VICTORIA_ROAD_X,
+  VICTORIA_TURN_Z,
+  roadCenterX,
+} from './roadLayout.js';
+
 const money = (value) => `\u20b9 ${Number(value || 0).toFixed(2)}`;
 
 export function createHud(config, onCredit = () => {}) {
@@ -25,10 +39,67 @@ export function createHud(config, onCredit = () => {}) {
     const scale = Math.min(w, h) / 360;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#172326'; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#514c43'; ctx.fillRect(cx - 12 * scale, 0, 24 * scale, h);
-    ctx.fillStyle = '#77776b'; ctx.fillRect(cx - 9 * scale, 0, 18 * scale, h);
+    const drawCurvedBand = (halfW, fill) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      for (let y = 0; y <= h; y += 6) {
+        const worldZ = playerZ + (y - cy) / scale;
+        const rx = cx + (roadCenterX(worldZ) - playerX) * scale;
+        if (y === 0) ctx.moveTo(rx - halfW, y);
+        else ctx.lineTo(rx - halfW, y);
+      }
+      for (let y = h; y >= 0; y -= 6) {
+        const worldZ = playerZ + (y - cy) / scale;
+        const rx = cx + (roadCenterX(worldZ) - playerX) * scale;
+        ctx.lineTo(rx + halfW, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    drawCurvedBand(12 * scale, '#514c43');
+    drawCurvedBand(9 * scale, '#77776b');
     ctx.strokeStyle = 'rgba(239,220,160,.6)'; ctx.lineWidth = 1.5;
-    ctx.setLineDash([7, 8]); ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke(); ctx.setLineDash([]);
+    ctx.setLineDash([7, 8]); ctx.beginPath();
+    for (let y = 0; y <= h; y += 6) {
+      const worldZ = playerZ + (y - cy) / scale;
+      const rx = cx + (roadCenterX(worldZ) - playerX) * scale;
+      if (y === 0) ctx.moveTo(rx, y);
+      else ctx.lineTo(rx, y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Draw cross streets, alleys, and Victoria Road + Victoria Memorial landmark
+    const firstBlock = Math.floor((playerZ - h / (2 * scale)) / ROAD_BLOCK_SPACING) - 1;
+    const lastBlock = Math.ceil((playerZ + h / (2 * scale)) / ROAD_BLOCK_SPACING) + 1;
+    for (let b = firstBlock; b <= lastBlock; b++) {
+      const bz = b * ROAD_BLOCK_SPACING;
+      const cyCross = cy + (bz - playerZ) * scale;
+      const cxCross = cx + (roadCenterX(bz) - playerX) * scale;
+      ctx.fillStyle = '#6a6d65';
+      ctx.fillRect(cxCross - (CROSS_STREET_LENGTH / 2) * scale, cyCross - (CROSS_STREET_WIDTH / 2) * scale, CROSS_STREET_LENGTH * scale, CROSS_STREET_WIDTH * scale);
+
+      const az = bz - ROAD_ALLEY_OFFSET;
+      const cyAlley = cy + (az - playerZ) * scale;
+      const cxAlley = cx + (roadCenterX(az) - playerX) * scale;
+      ctx.fillStyle = '#585c56';
+      ctx.fillRect(cxAlley - (ALLEY_LENGTH / 2) * scale, cyAlley - (ALLEY_WIDTH / 2) * scale, ALLEY_LENGTH * scale, ALLEY_WIDTH * scale);
+    }
+
+    // Victoria Road & Memorial Garden on minimap
+    const vRoadX = cx + (VICTORIA_ROAD_X - playerX) * scale;
+    const vTopY = cy + (VICTORIA_PLAZA_Z - playerZ) * scale;
+    const vBotY = cy + (VICTORIA_TURN_Z - playerZ) * scale;
+    ctx.fillStyle = '#7b8075';
+    ctx.fillRect(vRoadX - (VICTORIA_ROAD_WIDTH / 2) * scale, vTopY, VICTORIA_ROAD_WIDTH * scale, vBotY - vTopY);
+    ctx.fillStyle = '#2d5c33';
+    ctx.fillRect(vRoadX - 24 * scale, vTopY - 38 * scale, 48 * scale, 34 * scale);
+    ctx.fillStyle = '#f5eedc';
+    ctx.beginPath();
+    ctx.arc(vRoadX, vTopY - 22 * scale, Math.max(3, 7 * scale), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
     const point = (p) => ({ x: cx + (p.x - playerX) * scale, y: cy + (p.z - playerZ) * scale });
     const drawDot = (p, color, radius) => {
       const q = point(p);

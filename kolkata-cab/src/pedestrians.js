@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGLTF } from './gltfCache.js';
+import { roadAngle, roadCenterX } from './roadLayout.js';
 
 const DEFAULT_PERSON_MODELS = [
   './models/samp_person1.glb',
@@ -65,7 +66,7 @@ function createFallbackPerson(style) {
   return group;
 }
 
-function normalizePersonModel(modelRoot, style) {
+function normalizePersonModel(modelRoot) {
   const wrapper = new THREE.Group();
   wrapper.add(modelRoot);
 
@@ -101,16 +102,21 @@ function normalizePersonModel(modelRoot, style) {
   modelRoot.position.z -= center.z;
   modelRoot.position.y -= scaledBox.min.y;
 
-  // Apply clothing/fashion styling across meshes while keeping the exact figure geometry
+  modelRoot.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.castShadow = false;
+    obj.receiveShadow = true;
+  });
+  return wrapper;
+}
+
+function createStyledPerson(template, style) {
+  const wrapper = template.clone(true);
   const outfitColor = new THREE.Color(style.outfit);
   const accentColor = new THREE.Color(style.accent);
   const trimColor = new THREE.Color(style.trim);
-
-  modelRoot.traverse((obj) => {
+  wrapper.traverse((obj) => {
     if (!obj.isMesh) return;
-    obj.castShadow = true;
-    obj.receiveShadow = true;
-
     const name = (obj.name || '').toLowerCase();
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     const styledMats = mats.map((origMat) => {
@@ -152,6 +158,8 @@ export function createPedestrianSystem(
 
   const templates = new Array(modelUrls.length).fill(null);
   const walkers = [];
+  const pendingBuilds = [];
+  let pendingBuildIndex = 0;
 
   for (let i = 0; i < count; i++) {
     const style = FASHION_STYLES[i % FASHION_STYLES.length];
@@ -186,32 +194,30 @@ export function createPedestrianSystem(
     const tpl = templates[walker.modelSlot];
     if (!tpl) return;
     walker.figureHolder.clear();
-    const normalized = normalizePersonModel(tpl.clone(true), walker.style);
-    walker.figureHolder.add(normalized);
+    walker.figureHolder.add(createStyledPerson(tpl, walker.style));
   }
 
-  const loader = new GLTFLoader();
   modelUrls.forEach((url, slotIdx) => {
-    loader.load(
-      url,
-      (gltf) => {
-        templates[slotIdx] = gltf.scene;
-        for (const w of walkers) {
-          if (w.modelSlot === slotIdx) {
-            rebuildWalkerVisual(w);
-          }
-        }
-      },
-      undefined,
-      () => {
-        // Keep procedural fallback figure if a model file is missing
-      }
-    );
+    loadGLTF(url).then((gltf) => {
+      templates[slotIdx] = normalizePersonModel(gltf.scene.clone(true));
+      for (const walker of walkers) if (walker.modelSlot === slotIdx) pendingBuilds.push(walker);
+    }).catch(() => {
+      // Keep procedural fallback figure if a model file is missing.
+    });
   });
 
   return {
     group,
     update(playerZ, dt) {
+      let built = 0;
+      while (pendingBuildIndex < pendingBuilds.length && built < 1) {
+        rebuildWalkerVisual(pendingBuilds[pendingBuildIndex++]);
+        built++;
+      }
+      if (pendingBuildIndex >= pendingBuilds.length) {
+        pendingBuilds.length = 0;
+        pendingBuildIndex = 0;
+      }
       const nowSec = performance.now() * 0.001;
 
       for (const w of walkers) {
@@ -227,7 +233,8 @@ export function createPedestrianSystem(
         const stride = Math.sin(nowSec * 5.4 + w.phase);
         const bob = Math.abs(Math.sin(nowSec * 5.4 + w.phase)) * 0.035;
 
-        w.root.position.set(w.laneX, footpathY + bob, w.z);
+        w.root.position.set(roadCenterX(w.z) + w.laneX, footpathY + bob, w.z);
+        w.root.rotation.y = roadAngle(w.z);
         w.figureHolder.rotation.y = w.dir < 0 ? Math.PI : 0;
         w.figureHolder.rotation.z = stride * 0.035;
       }

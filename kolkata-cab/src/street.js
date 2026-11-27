@@ -1,36 +1,13 @@
 import * as THREE from 'three';
+import { isChunkRoadOpening, roadCenterX } from './roadLayout.js';
 
-const shopNames = [
-  ['FLURYS TEAROOM', '\u09ab\u09cd\u09b2\u09c1\u09b0\u09bf\u09b8 \u099f\u09bf\u09b0\u09c1\u09ae'],
-  ['PETER CAT', '\u09aa\u09c0\u099f\u09be\u09b0 \u0995\u09cd\u09af\u09be\u099f'],
-  ['MOCAMBO', '\u09ae\u09cb\u0995\u09be\u09ae\u09cd\u09ac\u09cb'],
-  ['CHAI & MISHTI', '\u099a\u09be \u0993 \u09ae\u09bf\u09b7\u09cd\u099f\u09bf'],
-  ['BOI BITAN', '\u09ac\u0987 \u09ac\u09bf\u09a4\u09be\u09a8'],
-  ['NORTH BARI CAFE', '\u0989\u09a4\u09cd\u09a4\u09b0 \u0995\u09b2\u0995\u09be\u09a4\u09be'],
-];
-
-const HERITAGE_PALETTE = [
-  { hex: 0x9c563f, css: '#9c563f', trim: '#e2ccb0', shutter: '#1e3a30', signBg: '#5e2336', signAccent: '#ff9ec4' },
-  { hex: 0xa87c3b, css: '#a87c3b', trim: '#e6d3ad', shutter: '#223d32', signBg: '#3b2414', signAccent: '#ffbe55' },
-  { hex: 0x7c8f82, css: '#7c8f82', trim: '#d6dfd8', shutter: '#23362c', signBg: '#183842', signAccent: '#8ce0ff' },
-  { hex: 0xb5aa94, css: '#b5aa94', trim: '#e6dcc8', shutter: '#422c1d', signBg: '#2a3d28', signAccent: '#ffd478' },
-  { hex: 0x9e675b, css: '#9e675b', trim: '#e3cbc4', shutter: '#1f3630', signBg: '#4a2126', signAccent: '#ffa57d' },
-  { hex: 0x856a46, css: '#856a46', trim: '#d8c5a2', shutter: '#1d2e29', signBg: '#2b243d', signAccent: '#ffc96b' },
-];
-
-const facadeTextures = [];
-const signTextures = [];
 const _dummy = new THREE.Object3D();
 const _unitBox = new THREE.BoxGeometry(1, 1, 1);
-const _facadeGeometry = new THREE.BoxGeometry(1, 1, 1);
 const stdMat = (color, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.08, ...extra });
 let streetGlowTexture;
 
-// Helper: checks if local chunk Z is inside the cross-street opening (|z| > 33.5) or alleyway (|z| < 3.1)
-function isRoadOpeningLocalZ(z) {
-  return Math.abs(z) > 33.5 || Math.abs(z) < 3.1;
-}
+function isRoadOpeningLocalZ(z) { return isChunkRoadOpening(z, 1.8); }
 
 function getStreetGlowTexture() {
   if (streetGlowTexture) return streetGlowTexture;
@@ -83,237 +60,11 @@ function randomFor(seed) {
   };
 }
 
-function drawArchWindow(ctx, x, y, w, h, palette, lit, random) {
-  const archR = Math.min(w * 0.5, 22);
-
-  ctx.fillStyle = palette.trim;
-  ctx.beginPath();
-  ctx.moveTo(x - 8, y + h);
-  ctx.lineTo(x - 8, y + archR);
-  ctx.arc(x + w / 2, y + archR, w / 2 + 8, Math.PI, 0, false);
-  ctx.lineTo(x + w + 8, y + h);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = lit ? '#ffbe66' : '#182429';
-  ctx.beginPath();
-  ctx.moveTo(x, y + h);
-  ctx.lineTo(x, y + archR);
-  ctx.arc(x + w / 2, y + archR, w / 2, Math.PI, 0, false);
-  ctx.lineTo(x + w, y + h);
-  ctx.closePath();
-  ctx.fill();
-
-  if (lit) {
-    const warmGlow = ctx.createRadialGradient(x + w / 2, y + h * 0.55, 4, x + w / 2, y + h * 0.55, w * 0.85);
-    warmGlow.addColorStop(0, 'rgba(255,228,165,0.92)');
-    warmGlow.addColorStop(1, 'rgba(235,142,52,0.35)');
-    ctx.fillStyle = warmGlow;
-    ctx.fillRect(x, y + archR * 0.4, w, h - archR * 0.4);
-  }
-
-  const shutterW = w * 0.28;
-  ctx.fillStyle = palette.shutter;
-  ctx.fillRect(x + 2, y + archR * 0.7, shutterW, h - archR * 0.7 - 2);
-  ctx.fillRect(x + w - shutterW - 2, y + archR * 0.7, shutterW, h - archR * 0.7 - 2);
-
-  ctx.fillStyle = 'rgba(8,12,11,0.48)';
-  for (let sy = y + archR * 0.8 + 4; sy < y + h - 5; sy += 7) {
-    ctx.fillRect(x + 4, sy, shutterW - 4, 3);
-    ctx.fillRect(x + w - shutterW + 2, sy, shutterW - 4, 3);
-  }
-
-  const midX = x + shutterW + 2;
-  const midW = Math.max(6, w - shutterW * 2 - 4);
-  if (!lit && random() > 0.2) {
-    ctx.fillStyle = 'rgba(185,212,222,0.14)';
-    ctx.fillRect(midX + 3, y + archR, midW - 6, h - archR - 6);
-  }
-  ctx.fillStyle = palette.trim;
-  for (let my = y + archR + 24; my < y + h - 8; my += 28) {
-    ctx.fillRect(midX, my, midW, 3);
-  }
-
-  ctx.fillStyle = palette.trim;
-  ctx.fillRect(x - 10, y + h, w + 20, 8);
-  ctx.fillStyle = 'rgba(20,16,12,0.42)';
-  ctx.fillRect(x - 8, y + h + 8, w + 16, 4);
-}
-
-function makeFacadeAtlas(variant) {
-  const palette = HERITAGE_PALETTE[variant % HERITAGE_PALETTE.length];
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 1024;
-  const ctx = canvas.getContext('2d');
-  const random = randomFor(9173 + variant * 613);
-
-  ctx.fillStyle = palette.css;
-  ctx.fillRect(0, 0, 512, 1024);
-
-  for (let i = 0; i < 140; i++) {
-    const x = random() * 512;
-    const y = random() * 1024;
-    const w = 8 + random() * 64;
-    const h = 6 + random() * 42;
-    ctx.fillStyle =
-      i % 3 === 0
-        ? 'rgba(30,24,20,0.18)'
-        : i % 3 === 1
-        ? 'rgba(250,238,212,0.16)'
-        : 'rgba(42,56,48,0.13)';
-    ctx.beginPath();
-    ctx.ellipse(x, y, w, h, random() * Math.PI, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = palette.trim;
-  ctx.fillRect(0, 0, 512, 24);
-  ctx.fillStyle = 'rgba(24,18,14,0.36)';
-  ctx.fillRect(0, 24, 512, 7);
-
-  for (const bandY of [315, 535]) {
-    ctx.fillStyle = palette.trim;
-    ctx.fillRect(0, bandY, 512, 10);
-    ctx.fillStyle = 'rgba(24,18,14,0.34)';
-    ctx.fillRect(0, bandY + 10, 512, 5);
-  }
-
-  const rows = 3;
-  const cols = 3;
-  const marginX = 34;
-  const colSpan = (512 - marginX * 2) / cols;
-  const rowBands = [
-    [44, 295],
-    [334, 515],
-    [556, 718],
-  ];
-
-  for (let r = 0; r < rows; r++) {
-    const [topY, botY] = rowBands[r];
-    const h = Math.min(142, botY - topY - 20);
-    const y = topY + (botY - topY - h) / 2;
-    for (let c = 0; c < cols; c++) {
-      const w = Math.min(84, colSpan * 0.56);
-      const x = marginX + c * colSpan + (colSpan - w) / 2;
-      const lit = (r * 2 + c + variant) % 3 === 0;
-      drawArchWindow(ctx, x, y, w, h, palette, lit, random);
-    }
-  }
-
-  ctx.fillStyle = palette.trim;
-  ctx.fillRect(0, 738, 512, 10);
-
-  const cafeGrad = ctx.createLinearGradient(20, 776, 20, 1012);
-  cafeGrad.addColorStop(0, '#ffd482');
-  cafeGrad.addColorStop(1, '#b86828');
-  ctx.fillStyle = '#241913';
-  ctx.fillRect(18, 772, 156, 244);
-  ctx.fillStyle = cafeGrad;
-  ctx.fillRect(26, 782, 140, 155);
-  ctx.fillStyle = '#5c3720';
-  ctx.fillRect(26, 938, 140, 74);
-  for (let k = 0; k < 5; k++) {
-    ctx.fillStyle = ['#fff0c2', '#ff9db8', '#ffd166', '#98e2c6', '#ffb86c'][k];
-    ctx.fillRect(36 + k * 25, 892, 16, 36);
-  }
-
-  ctx.fillStyle = '#241d18';
-  ctx.fillRect(184, 772, 144, 244);
-  ctx.fillStyle = '#4f4841';
-  ctx.fillRect(192, 786, 128, 224);
-  for (let sy = 796; sy < 1004; sy += 14) {
-    ctx.fillStyle = '#8b8070';
-    ctx.fillRect(196, sy, 120, 5);
-  }
-
-  ctx.fillStyle = '#211814';
-  ctx.fillRect(338, 772, 156, 244);
-  ctx.fillStyle = '#f5be67';
-  ctx.fillRect(346, 782, 140, 165);
-  for (let row = 0; row < 3; row++) {
-    const sy = 824 + row * 44;
-    ctx.fillStyle = '#5e3c24';
-    ctx.fillRect(352, sy, 128, 6);
-    for (let col = 0; col < 6; col++) {
-      ctx.fillStyle = ['#b83b2b', '#27556e', '#d19838', '#3e6e4c', '#9e476a', '#c96a38'][col];
-      ctx.fillRect(358 + col * 20, sy - 22, 14, 21);
-    }
-  }
-
-  ctx.fillStyle = palette.signBg;
-  ctx.fillRect(16, 744, 480, 26);
-  ctx.strokeStyle = palette.signAccent;
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(18, 746, 476, 22);
-  ctx.fillStyle = palette.signAccent;
-  ctx.font = 'bold 14px Manrope, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(shopNames[variant][0], 256, 757);
-
-  const grime = ctx.createLinearGradient(0, 890, 0, 1024);
-  grime.addColorStop(0, 'rgba(18,16,14,0)');
-  grime.addColorStop(1, 'rgba(14,12,10,0.62)');
-  ctx.fillStyle = grime;
-  ctx.fillRect(0, 890, 512, 134);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  facadeTextures[variant] = texture;
-  return texture;
-}
-
-function getFacadeMaterials() {
-  if (facadeTextures.length === 0) {
-    for (let i = 0; i < HERITAGE_PALETTE.length; i++) makeFacadeAtlas(i);
-  }
-  return facadeTextures.map((map, i) => {
-    const facade = new THREE.MeshStandardMaterial({
-      map,
-      color: 0xffffff,
-      roughness: 0.72,
-      metalness: 0.06,
-      emissiveMap: map,
-      emissive: 0xffcf87,
-      emissiveIntensity: 0.22,
-      fog: true,
-    });
-    const sideWall = stdMat(HERITAGE_PALETTE[i % HERITAGE_PALETTE.length].hex, { fog: true });
-    return [facade, facade, sideWall, sideWall, sideWall, sideWall];
-  });
-}
-
-function makeSignTexture(index) {
-  if (signTextures[index]) return signTextures[index];
-  const palette = HERITAGE_PALETTE[index % HERITAGE_PALETTE.length];
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 160;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = palette.signBg;
-  ctx.fillRect(0, 0, 512, 160);
-  ctx.strokeStyle = palette.signAccent;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(8, 8, 496, 144);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = palette.signAccent;
-  ctx.font = 'bold 44px Manrope, Noto Sans Bengali, sans-serif';
-  ctx.fillText(shopNames[index % shopNames.length][0], 256, 54);
-  ctx.fillStyle = '#fff3d6';
-  ctx.font = 'bold 30px Manrope, Noto Sans Bengali, sans-serif';
-  ctx.fillText(shopNames[index % shopNames.length][1], 256, 112);
-  signTextures[index] = new THREE.CanvasTexture(canvas);
-  signTextures[index].colorSpace = THREE.SRGBColorSpace;
-  return signTextures[index];
-}
-
 function addInstanced(parent, geometry, material, items, receiveShadow = true) {
   if (items.length === 0) return null;
   const mesh = new THREE.InstancedMesh(geometry, material, items.length);
-  mesh.castShadow = true;
+  // Small street clutter and crowd instances do not need their own shadow pass.
+  mesh.castShadow = false;
   mesh.receiveShadow = receiveShadow;
   items.forEach((item, i) => {
     _dummy.position.set(item.x, item.y, item.z);
@@ -326,262 +77,6 @@ function addInstanced(parent, geometry, material, items, receiveShadow = true) {
   mesh.instanceMatrix.needsUpdate = true;
   parent.add(mesh);
   return mesh;
-}
-
-function seededRng(chunkIndex, side) {
-  return randomFor(9929 + chunkIndex * 1709 + (side + 1) * 113);
-}
-
-// Leaves a 13m cross-street gap at chunk ends (z = ±40) and a 6.2m alleyway gap at z = 0
-function makeBayRuns(rng) {
-  const runs = [];
-  const alleyHalf = 3.1;
-  const crossHalf = 6.5;
-  for (const range of [[-40 + crossHalf, -alleyHalf], [alleyHalf, 40 - crossHalf]]) {
-    let z = range[0];
-    while (z < range[1]) {
-      const remaining = range[1] - z;
-      let width = 6 + Math.floor(rng() * 7);
-      if (remaining <= 11) width = remaining;
-      else if (remaining - width < 6) width = remaining - 6;
-      runs.push({ center: z + width / 2, width });
-      z += width;
-    }
-  }
-  return runs;
-}
-
-function addFacadeRows(group, chunkIndex, config) {
-  const materials = getFacadeMaterials();
-  const facades = Array.from({ length: HERITAGE_PALETTE.length }, () => []);
-  const cornices = [];
-  const parapets = [];
-  const pedimentCaps = [];
-  const pilasters = [];
-  const columns = [];
-  const balconySlabs = [];
-  const balconyRailings = [];
-  const balconyBrackets = [];
-  const verandaPillars = [];
-  const drains = [];
-  const acUnits = [];
-  const laundry = [];
-  const tanks = [];
-  const mumties = [];
-  const junctionBoxes = [];
-  const signGroups = Array.from({ length: HERITAGE_PALETTE.length }, () => []);
-  const signGlows = [];
-
-  for (const side of [-1, 1]) {
-    const rng = seededRng(chunkIndex, side);
-    const runs = makeBayRuns(rng);
-    for (let i = 0; i < runs.length; i++) {
-      const bay = runs[i];
-      const variant = Math.floor(rng() * HERITAGE_PALETTE.length);
-      const palette = HERITAGE_PALETTE[variant];
-      const floors = 3 + Math.floor(rng() * 3);
-      const height = floors * 3.1;
-      const depth = 7.5 + rng() * 5.5;
-      const front = config.roadHalfWidth + config.footpathWidth + 0.65;
-      const center = side * (front + depth / 2);
-      const z = bay.center;
-
-      facades[variant].push({ x: center, y: height / 2, z, sx: depth, sy: height, sz: bay.width });
-
-      cornices.push({
-        x: side * (front - 0.14),
-        y: height + 0.12,
-        z,
-        sx: 0.42,
-        sy: 0.24,
-        sz: bay.width + 0.24,
-      });
-      parapets.push({
-        x: side * (front + 0.05),
-        y: height + 0.56,
-        z,
-        sx: 0.24,
-        sy: 0.68,
-        sz: bay.width * 0.96,
-        color: palette.hex,
-      });
-
-      if ((i + chunkIndex) % 2 === 0) {
-        pedimentCaps.push({
-          x: side * (front - 0.12),
-          y: height + 1.05,
-          z,
-          sx: 0.34,
-          sy: 0.42,
-          sz: bay.width * 0.46,
-        });
-      }
-
-      for (const endSign of [-1, 1]) {
-        pilasters.push({
-          x: side * (front - 0.08),
-          y: height / 2,
-          z: z + endSign * (bay.width * 0.47),
-          sx: 0.2,
-          sy: height,
-          sz: 0.34,
-        });
-      }
-
-      if (rng() < 0.72) {
-        const floorIndex = 1 + Math.floor(rng() * Math.max(1, floors - 1));
-        const by = floorIndex * 3.1;
-        const bw = bay.width * 0.84;
-        const projDepth = 1.05;
-
-        balconySlabs.push({
-          x: side * (front - projDepth * 0.45),
-          y: by,
-          z,
-          sx: projDepth,
-          sy: 0.18,
-          sz: bw,
-        });
-        balconyRailings.push({
-          x: side * (front - projDepth + 0.04),
-          y: by + 0.52,
-          z,
-          sx: 0.08,
-          sy: 0.86,
-          sz: bw,
-          color: 0x1e2322,
-        });
-
-        const bracketCount = bw > 7.5 ? 3 : 2;
-        for (let b = 0; b < bracketCount; b++) {
-          const frac = bracketCount === 1 ? 0 : -0.38 + (b / (bracketCount - 1)) * 0.76;
-          balconyBrackets.push({
-            x: side * (front - projDepth * 0.48),
-            y: by - 0.24,
-            z: z + bw * frac,
-            sx: 0.78,
-            sy: 0.26,
-            sz: 0.16,
-            rz: side * 0.38,
-          });
-        }
-
-        if (rng() < 0.55) {
-          for (const cSign of [-1, 1]) {
-            columns.push({
-              x: side * (front - projDepth + 0.14),
-              y: by - 1.5,
-              z: z + cSign * (bw * 0.36),
-              sy: 3.0,
-            });
-          }
-        }
-      }
-
-      if (bay.width >= 7.5 && rng() < 0.65) {
-        verandaPillars.push({
-          x: side * (front - 0.55),
-          y: 1.55,
-          z: z + (rng() > 0.5 ? 1.8 : -1.8),
-          sy: 3.1,
-        });
-      }
-
-      if (rng() < 0.7) {
-        drains.push({ x: side * (front - 0.08), y: height / 2, z: z + bay.width * 0.43, sy: height, color: 0x3f3c36 });
-      }
-      if (rng() < 0.35) {
-        acUnits.push({ x: side * (front - 0.12), y: 6.2 + rng() * Math.max(0, height - 7.5), z: z + (rng() - 0.5) * bay.width * 0.3, color: 0x62655d });
-      }
-      if (rng() < 0.25) {
-        laundry.push({
-          x: side * (front - 0.78),
-          y: 6.5 + rng() * Math.max(0, height - 7.5),
-          z: z + (rng() - 0.5) * bay.width * 0.35,
-          sx: 0.04,
-          sy: 0.75,
-          sz: 1.1,
-          color: [0xd9c8a0, 0xa84336, 0x6d8991][Math.floor(rng() * 3)],
-        });
-      }
-
-      if (i === 0 && rng() < 0.85) {
-        tanks.push({ x: center, y: height + 1.5, z, sx: 1.5, sy: 1.3, sz: 1.7, color: 0x414746 });
-        junctionBoxes.push({ x: side * (front - 0.1), y: 4.2, z: z + 1.3, color: 0x4b443a });
-      }
-
-      if (i % 3 === 1 && rng() < 0.45) {
-        mumties.push({
-          x: side * (front + depth * 0.45),
-          y: height + 1.2,
-          z,
-          sx: 2.3,
-          sy: 2.4,
-          sz: Math.min(3.4, bay.width * 0.52),
-        });
-      }
-
-      if (i === 1 || i === 3) {
-        signGroups[variant].push({
-          x: side * (front - 0.94),
-          y: 2.95,
-          z,
-          sx: Math.min(4.4, bay.width * 0.58),
-          sy: 0.72,
-          sz: 1,
-          ry: side === 1 ? -Math.PI / 2 : Math.PI / 2,
-        });
-        signGlows.push({
-          x: side * (front - 0.92),
-          y: 2.95,
-          z,
-          sx: Math.min(5.2, bay.width * 0.7),
-          sy: 0.96,
-          ry: side === 1 ? -Math.PI / 2 : Math.PI / 2,
-        });
-      }
-
-      const backDepth = 9 + rng() * 6;
-      const backHeight = (6 + Math.floor(rng() * 5)) * 3.1;
-      const backFront = front + depth + 8;
-      const backCenter = side * (backFront + backDepth / 2);
-      const backVariant = Math.floor(rng() * HERITAGE_PALETTE.length);
-      facades[backVariant].push({ x: backCenter, y: backHeight / 2, z, sx: backDepth, sy: backHeight, sz: bay.width });
-    }
-  }
-
-  for (let variant = 0; variant < HERITAGE_PALETTE.length; variant++) {
-    addInstanced(group, _facadeGeometry, materials[variant], facades[variant]);
-    if (signGroups[variant].length) {
-      const signTexture = makeSignTexture(variant);
-      const signMat = new THREE.MeshStandardMaterial({
-        map: signTexture,
-        emissive: 0xffffff,
-        emissiveMap: signTexture,
-        emissiveIntensity: 1.15,
-        roughness: 0.35,
-        side: THREE.DoubleSide,
-      });
-      addInstanced(group, new THREE.PlaneGeometry(1, 1), signMat, signGroups[variant], false);
-    }
-  }
-  addGlowBatch(group, signGlows, 0xffc68c, 0.2);
-
-  addInstanced(group, _unitBox, stdMat(0xd9c6a6), cornices);
-  addInstanced(group, _unitBox, stdMat(0xffffff), parapets);
-  addInstanced(group, _unitBox, stdMat(0xe3d1b2), pedimentCaps);
-  addInstanced(group, _unitBox, stdMat(0xdfd0b4), pilasters);
-  addInstanced(group, new THREE.CylinderGeometry(0.14, 0.17, 1, 8), stdMat(0xe5d7bc), columns);
-  addInstanced(group, _unitBox, stdMat(0xc7b28e), balconySlabs);
-  addInstanced(group, _unitBox, stdMat(0xffffff), balconyRailings);
-  addInstanced(group, _unitBox, stdMat(0xd6c19e), balconyBrackets);
-  addInstanced(group, new THREE.CylinderGeometry(0.16, 0.19, 1, 8), stdMat(0xd8c5a4), verandaPillars);
-  addInstanced(group, new THREE.CylinderGeometry(0.045, 0.06, 1, 6), stdMat(0xffffff), drains);
-  addInstanced(group, new THREE.BoxGeometry(0.8, 0.48, 0.55), stdMat(0xffffff), acUnits);
-  addInstanced(group, _unitBox, stdMat(0xffffff), laundry);
-  addInstanced(group, new THREE.CylinderGeometry(0.75, 0.75, 1, 8), stdMat(0xffffff), tanks);
-  addInstanced(group, _unitBox, stdMat(0xd6c2a0), mumties);
-  addInstanced(group, new THREE.BoxGeometry(0.45, 0.65, 0.32), stdMat(0xffffff), junctionBoxes);
 }
 
 function densitySettings(detailLevel, densityConfig) {
@@ -597,7 +92,7 @@ function addTreesPolesAndWires(group, chunkIndex, config, density) {
   const crossArms = [];
   const wireJoints = [];
   for (const side of [-1, 1]) {
-    for (let i = 0; i < density.trees; i++) {
+    for (let i = 0; i < (density.trees || 0); i++) {
       const z = -28 + i * (56 / Math.max(1, density.trees - 1));
       if (isRoadOpeningLocalZ(z)) continue;
       const x = side * (12.4 + (i % 2) * 0.3);
@@ -612,7 +107,7 @@ function addTreesPolesAndWires(group, chunkIndex, config, density) {
         color: [0x36523c, 0x435e3e, 0x2f4b39][(chunkIndex + i) % 3],
       });
     }
-    for (let i = 0; i < density.poles; i++) {
+    for (let i = 0; i < (density.poles || 0); i++) {
       const z = -26 + i * (52 / Math.max(1, density.poles - 1));
       if (isRoadOpeningLocalZ(z)) continue;
       const x = side * 12.2;
@@ -772,22 +267,24 @@ function addPeople(group, chunkIndex, density) {
   const legMesh = addInstanced(group, new THREE.CylinderGeometry(0.14, 0.12, 1, 6), legsMaterial, legs);
   addInstanced(group, new THREE.CylinderGeometry(0.035, 0.04, 1.0, 6), stdMat(0x423c35), umbrellas);
   addInstanced(group, new THREE.ConeGeometry(0.8, 0.34, 8), stdMat(0xffffff), umbrellas.map((p) => ({ ...p, sy: 0.48 })));
+  const temp = new THREE.Object3D();
   return (time) => {
     if (!bodyMesh || !headMesh || !legMesh) return;
-    const temp = new THREE.Object3D();
+    const cz = group.position.z;
     records.forEach((p, i) => {
       const bob = p.walking ? Math.sin(time * 5.2 + p.phase) * 0.045 : 0;
-      temp.position.set(p.x, 1.0 + bob, p.z);
+      const px = p.x + roadCenterX(cz + p.z);
+      temp.position.set(px, 1.0 + bob, p.z);
       temp.scale.set(0.48, 0.84, 0.34);
       temp.updateMatrix();
       bodyMesh.setMatrixAt(i, temp.matrix);
-      temp.position.set(p.x, 1.59 + bob, p.z);
+      temp.position.set(px, 1.59 + bob, p.z);
       temp.scale.set(0.24, 0.25, 0.24);
       temp.updateMatrix();
       headMesh.setMatrixAt(i, temp.matrix);
       for (let leg = 0; leg < 2; leg++) {
         const swing = p.walking ? Math.sin(time * 5.2 + p.phase + leg * Math.PI) * 0.08 : 0;
-        temp.position.set(p.x + (leg ? 0.13 : -0.13), 0.38, p.z + swing);
+        temp.position.set(px + (leg ? 0.13 : -0.13), 0.38, p.z + swing);
         temp.scale.set(0.12, 0.7, 0.15);
         temp.updateMatrix();
         legMesh.setMatrixAt(i * 2 + leg, temp.matrix);
@@ -839,7 +336,6 @@ function addWires(group) {
 }
 
 export function dressChunk(group, chunkIndex, detailLevel, config) {
-  addFacadeRows(group, chunkIndex, config);
   const density = densitySettings(detailLevel, config.density);
   addTreesPolesAndWires(group, chunkIndex, config, density);
   addFootpathClutter(group, chunkIndex, detailLevel, config, density);
@@ -897,7 +393,7 @@ export function createLandmarks(scene) {
   for (const landmark of [flyover, bridge]) {
     landmark.traverse((object) => {
       if (object.isMesh) {
-        object.castShadow = true;
+        object.castShadow = false;
         object.receiveShadow = true;
       }
     });

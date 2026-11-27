@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGLTF } from './gltfCache.js';
+import { roadAngle, roadCenterX } from './roadLayout.js';
 
 const DEFAULT_JETTA_GLB_URL = './models/volk_jetta.glb';
 const TARGET_LENGTH = 4.45;
@@ -145,7 +146,7 @@ function normalizeJettaModel(modelRoot, oncoming = false, tintHex = null) {
 
   modelRoot.traverse((obj) => {
     if (!obj.isMesh) return;
-    obj.castShadow = true;
+    obj.castShadow = false;
     obj.receiveShadow = true;
     const name = (obj.name || '').toLowerCase();
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -330,7 +331,8 @@ function createJettaUnit(
       const microBob = Math.abs(Math.sin(time * 8.5)) * 0.008;
       const bodyRoll = -Math.sin(time * 1.0) * 0.014;
 
-      root.position.set(currentX, minGroundY + microBob, carZ);
+      root.position.set(roadCenterX(carZ) + currentX, minGroundY + microBob, carZ);
+      root.rotation.y = roadAngle(carZ);
       visual.rotation.z = bodyRoll;
     },
   };
@@ -347,6 +349,8 @@ export function createJettaTraffic(
   const headGlowTex = makeGlowTexture([255, 232, 185], 0.92);
   const poolTex = makeRoadPoolTexture();
   const units = [];
+  const pendingModelBuilds = [];
+  let pendingModelIndex = 0;
 
   // Same-direction Jettas cruising along the left side of the avenue (-Z)
   const sameLanes = [-5.5, -2.1];
@@ -384,23 +388,22 @@ export function createJettaTraffic(
     );
   }
 
-  const loader = new GLTFLoader();
-  loader.load(
-    glbUrl,
-    (gltf) => {
-      for (const u of units) {
-        u.setTemplate(gltf.scene);
-      }
-    },
-    undefined,
-    () => {
+  loadGLTF(glbUrl).then((gltf) => {
+      for (const u of units) pendingModelBuilds.push([u, gltf.scene]);
+    }).catch(() => {
       // Fallback 3D Jetta stays active if GLB hasn't loaded yet
-    }
-  );
+    });
 
   return {
     update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight = true) {
+      if (pendingModelIndex < pendingModelBuilds.length) {
+        const [unit, template] = pendingModelBuilds[pendingModelIndex++];
+        unit.setTemplate(template);
+        if (pendingModelIndex >= pendingModelBuilds.length) pendingModelBuilds.length = pendingModelIndex = 0;
+      }
       for (const u of units) {
+        u.group.visible = Math.abs(taxiLateral - roadCenterX(taxiZ)) <= 13;
+        if (!u.group.visible) continue;
         u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight, units);
       }
     },

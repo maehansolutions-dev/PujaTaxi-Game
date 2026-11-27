@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { roadAngle, roadCenterX } from './roadLayout.js';
 
 function randomBetween(a, b) {
   return a + Math.random() * (b - a);
@@ -59,7 +60,7 @@ function createSignal(z, index) {
   armGroup.add(hand);
   root.traverse((o) => {
     if (o.isMesh) {
-      o.castShadow = true;
+      o.castShadow = false;
       o.receiveShadow = true;
     }
   });
@@ -234,7 +235,9 @@ export function createTrafficSystem(scene, config, onEvent = () => {}) {
     const lightState = phase < redEnd ? 'red' : phase < yellowEnd ? 'yellow' : 'green';
 
     signals.forEach((signal) => {
-      setSignalState(signal, lightState);
+      signal.position.x = roadCenterX(signal.position.z);
+      signal.rotation.y = roadAngle(signal.position.z);
+      if (signal.userData.state !== lightState) setSignalState(signal, lightState);
       signal.userData.arm.rotation.z = 0.12 + Math.sin(elapsed * 3 + signal.userData.index) * 0.18;
       if (playerLastZ > signal.position.z && playerZ <= signal.position.z) {
         if (signal.userData.state === 'red') addWanted('Ran a red light');
@@ -243,7 +246,8 @@ export function createTrafficSystem(scene, config, onEvent = () => {}) {
         }
       }
       if (signal.position.z > playerZ + config.signalRecycleBehindUnits) {
-        const farthest = Math.min(...signals.map((item) => item.position.z));
+        let farthest = Infinity;
+        for (const item of signals) farthest = Math.min(farthest, item.position.z);
         signal.position.z = farthest - signalSpacing;
       }
     });

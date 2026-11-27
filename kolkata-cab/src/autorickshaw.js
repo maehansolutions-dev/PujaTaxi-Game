@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadGLTF } from './gltfCache.js';
+import { roadAngle, roadCenterX } from './roadLayout.js';
 
 const DEFAULT_GLB_URL = './models/autorickshaw.glb';
 const TARGET_LENGTH = 2.85;
@@ -144,7 +145,7 @@ function normalizeAutoModel(modelRoot, oncoming = false) {
 
   modelRoot.traverse((obj) => {
     if (!obj.isMesh) return;
-    obj.castShadow = true;
+    obj.castShadow = false;
     obj.receiveShadow = true;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (const mat of mats) {
@@ -276,10 +277,11 @@ function createAutoUnit(
       }
 
       let targetX = laneX + Math.sin(time * 0.9) * 0.14;
-      const dx = targetX - taxiLateral;
+      const localTaxiX = taxiLateral - roadCenterX(taxiZ);
+      const dx = targetX - localTaxiX;
       const dz = autoZ - taxiZ;
       if (!oncoming && Math.abs(dx) < 2.2 && Math.abs(dz) < 7.5) {
-        targetX = taxiLateral + (dx >= 0 ? 2.4 : -2.4);
+        targetX = localTaxiX + (dx >= 0 ? 2.4 : -2.4);
       }
       targetX = THREE.MathUtils.clamp(targetX, -6.2, 6.2);
       currentX = THREE.MathUtils.lerp(currentX, targetX, 1 - Math.exp(-4 * dt));
@@ -287,7 +289,8 @@ function createAutoUnit(
       const bob = Math.abs(Math.sin(time * 9.5)) * 0.012;
       const roll = -Math.sin(time * 1.1) * 0.02;
 
-      root.position.set(currentX, bob, autoZ);
+      root.position.set(roadCenterX(autoZ) + currentX, bob, autoZ);
+      root.rotation.y = roadAngle(autoZ);
       visual.rotation.z = roll;
     },
   };
@@ -300,6 +303,8 @@ export function createAutoTraffic(
   const headGlowTex = makeGlowTexture([255, 226, 165], 0.92);
   const poolTex = makeRoadPoolTexture();
   const units = [];
+  const pendingModelBuilds = [];
+  let pendingModelIndex = 0;
 
   units.push(
     createAutoUnit(scene, {
@@ -334,21 +339,20 @@ export function createAutoTraffic(
     );
   }
 
-  const loader = new GLTFLoader();
-  loader.load(
-    glbUrl,
-    (gltf) => {
-      for (const u of units) {
-        u.setTemplate(gltf.scene);
-      }
-    },
-    undefined,
-    () => {}
-  );
+  loadGLTF(glbUrl, { priority: 'high' }).then((gltf) => {
+      for (const u of units) pendingModelBuilds.push([u, gltf.scene]);
+    }).catch(() => {});
 
   return {
     update(taxiLateral, taxiZ, taxiSpeedKmh, dt) {
+      if (pendingModelIndex < pendingModelBuilds.length) {
+        const [unit, template] = pendingModelBuilds[pendingModelIndex++];
+        unit.setTemplate(template);
+        if (pendingModelIndex >= pendingModelBuilds.length) pendingModelBuilds.length = pendingModelIndex = 0;
+      }
       for (const u of units) {
+        u.group.visible = Math.abs(taxiLateral - roadCenterX(taxiZ)) <= 13;
+        if (!u.group.visible) continue;
         u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt);
       }
     },
