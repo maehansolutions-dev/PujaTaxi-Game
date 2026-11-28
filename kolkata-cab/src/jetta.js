@@ -275,6 +275,8 @@ function createJettaUnit(
   let initialized = false;
   let carZ = initialRelZ;
   let currentX = laneX;
+  let currentSpeed = cruiseSpeedKmh;
+  let lastHornAt = -10;
 
   return {
     group: root,
@@ -284,7 +286,7 @@ function createJettaUnit(
     setTemplate(srcScene) {
       attachNormalized(srcScene);
     },
-    update(taxiLateral, taxiZ, _taxiSpeedKmh, dt, isNight = true, allUnits = []) {
+    update(taxiLateral, taxiZ, _taxiSpeedKmh, dt, isNight = true, allUnits = [], onHorn) {
       if (!initialized) {
         carZ = taxiZ + initialRelZ;
         initialized = true;
@@ -292,35 +294,54 @@ function createJettaUnit(
 
       lights.setNightMode(isNight);
 
-      const time = performance.now() * 0.001 + phase;
-      let effectiveSpeed = cruiseSpeedKmh + Math.sin(time * 0.75) * 4.5;
+      const nowSec = performance.now() * 0.001;
+      const time = nowSec + phase;
+      let targetSpeed = cruiseSpeedKmh + Math.sin(time * 0.75) * 4.5;
 
       // Maintain safe spacing behind a vehicle ahead in the same travel direction & lane
-      const dir = oncoming ? 1 : -1;
       for (const other of allUnits) {
         if (other === this || other.oncoming !== oncoming) continue;
         if (Math.abs(other.laneX - laneX) > 1.3) continue;
         const otherZ = other.getZ();
         const gap = oncoming ? otherZ - carZ : carZ - otherZ;
         if (gap > 0 && gap < 10.5) {
-          effectiveSpeed = Math.min(effectiveSpeed, cruiseSpeedKmh * 0.35);
+          targetSpeed = Math.min(targetSpeed, cruiseSpeedKmh * 0.35);
           break;
         }
       }
 
-      const deltaZ = effectiveSpeed * WORLD_UNIT_PER_KMH_PER_SEC * dt;
+      // Stop and blow horn if the player's taxi blocks this Jetta
+      const localTaxiX = taxiLateral - roadCenterX(taxiZ);
+      const lateralBlocked = Math.abs(currentX - localTaxiX) < 2.35;
+      const gapToTaxi = oncoming ? taxiZ - carZ : carZ - taxiZ;
+      if (lateralBlocked && gapToTaxi > -2.0 && gapToTaxi < 8.4) {
+        targetSpeed = 0;
+        if (nowSec - lastHornAt > 2.4) {
+          onHorn?.();
+          lastHornAt = nowSec;
+        }
+      } else if (lateralBlocked && gapToTaxi >= 8.4 && gapToTaxi < 17.5) {
+        targetSpeed = Math.min(targetSpeed, cruiseSpeedKmh * 0.35);
+      }
+
+      currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, dt * (targetSpeed === 0 ? 7.5 : 3.2));
+      currentSpeed = Math.max(0, currentSpeed);
+      const deltaZ = currentSpeed * WORLD_UNIT_PER_KMH_PER_SEC * dt;
 
       if (oncoming) {
         carZ += deltaZ;
         if (carZ > taxiZ + 22) {
           carZ = taxiZ - 115 - ((phase * 17) % 45);
+          currentSpeed = cruiseSpeedKmh;
         }
       } else {
         carZ -= deltaZ;
         if (carZ > taxiZ + 34) {
           carZ = taxiZ - 95 - ((phase * 13) % 35);
+          currentSpeed = cruiseSpeedKmh;
         } else if (carZ < taxiZ - 135) {
           carZ = taxiZ + 24;
+          currentSpeed = cruiseSpeedKmh;
         }
       }
 
@@ -395,7 +416,7 @@ export function createJettaTraffic(
     });
 
   return {
-    update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight = true) {
+    update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight = true, onHorn) {
       if (pendingModelIndex < pendingModelBuilds.length) {
         const [unit, template] = pendingModelBuilds[pendingModelIndex++];
         unit.setTemplate(template);
@@ -404,7 +425,7 @@ export function createJettaTraffic(
       for (const u of units) {
         u.group.visible = Math.abs(taxiLateral - roadCenterX(taxiZ)) <= 13;
         if (!u.group.visible) continue;
-        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight, units);
+        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight, units, onHorn);
       }
     },
   };

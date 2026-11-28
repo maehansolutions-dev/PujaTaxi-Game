@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { GANGA_NORTH_BANK_Z, GANGA_SOUTH_BANK_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 import { loadGLTF } from './gltfCache.js';
 
 export const DEFAULT_TREE_MODELS = [
@@ -207,7 +207,8 @@ export function createTreeSystem(
         }
         t.root.position.set(roadCenterX(t.z) + t.baseX, footpathY, t.z);
         t.root.rotation.y = roadAngle(t.z);
-        t.root.visible = t.z <= playerZ + 35 && t.z >= playerZ - 160;
+        const overRiver = t.z <= GANGA_SOUTH_BANK_Z + 10 && t.z >= GANGA_NORTH_BANK_Z - 10;
+        t.root.visible = !overRiver && t.z <= playerZ + 35 && t.z >= playerZ - 160;
       }
     },
   };

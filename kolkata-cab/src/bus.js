@@ -265,6 +265,8 @@ function createBusUnit(
   let initialized = false;
   let busZ = initialRelZ;
   let currentX = laneX;
+  let currentSpeed = cruiseSpeedKmh;
+  let lastHornAt = -10;
 
   return {
     group: root,
@@ -275,7 +277,7 @@ function createBusUnit(
     setTemplate(srcScene) {
       attachNormalized(srcScene);
     },
-    update(_taxiLateral, taxiZ, _taxiSpeedKmh, dt, isNight = true, allUnits = []) {
+    update(taxiLateral, taxiZ, _taxiSpeedKmh, dt, isNight = true, allUnits = [], onHorn) {
       if (!initialized) {
         busZ = taxiZ + initialRelZ;
         initialized = true;
@@ -283,8 +285,9 @@ function createBusUnit(
 
       lights.setNightMode(isNight);
 
-      const time = performance.now() * 0.001 + phase;
-      let effectiveSpeed = cruiseSpeedKmh + Math.sin(time * 0.6) * 3.0;
+      const nowSec = performance.now() * 0.001;
+      const time = nowSec + phase;
+      let targetSpeed = cruiseSpeedKmh + Math.sin(time * 0.6) * 3.0;
 
       for (const other of allUnits) {
         if (other === this || other.oncoming !== oncoming) continue;
@@ -292,24 +295,43 @@ function createBusUnit(
         const otherZ = other.getZ();
         const gap = oncoming ? otherZ - busZ : busZ - otherZ;
         if (gap > 0 && gap < 16.5) {
-          effectiveSpeed = Math.min(effectiveSpeed, cruiseSpeedKmh * 0.35);
+          targetSpeed = Math.min(targetSpeed, cruiseSpeedKmh * 0.35);
           break;
         }
       }
 
-      const deltaZ = effectiveSpeed * WORLD_UNIT_PER_KMH_PER_SEC * dt;
+      // Stop and blow horn if the player's taxi blocks this bus
+      const localTaxiX = taxiLateral - roadCenterX(taxiZ);
+      const lateralBlocked = Math.abs(currentX - localTaxiX) < 2.65;
+      const gapToTaxi = oncoming ? taxiZ - busZ : busZ - taxiZ;
+      if (lateralBlocked && gapToTaxi > -2.5 && gapToTaxi < 10.8) {
+        targetSpeed = 0;
+        if (nowSec - lastHornAt > 2.8) {
+          onHorn?.();
+          lastHornAt = nowSec;
+        }
+      } else if (lateralBlocked && gapToTaxi >= 10.8 && gapToTaxi < 20.0) {
+        targetSpeed = Math.min(targetSpeed, cruiseSpeedKmh * 0.35);
+      }
+
+      currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, dt * (targetSpeed === 0 ? 7.0 : 2.8));
+      currentSpeed = Math.max(0, currentSpeed);
+      const deltaZ = currentSpeed * WORLD_UNIT_PER_KMH_PER_SEC * dt;
 
       if (oncoming) {
         busZ += deltaZ;
         if (busZ > taxiZ + 26) {
           busZ = taxiZ - 140 - ((phase * 19) % 45);
+          currentSpeed = cruiseSpeedKmh;
         }
       } else {
         busZ -= deltaZ;
         if (busZ > taxiZ + 38) {
           busZ = taxiZ - 120 - ((phase * 15) % 40);
+          currentSpeed = cruiseSpeedKmh;
         } else if (busZ < taxiZ - 155) {
           busZ = taxiZ + 28;
+          currentSpeed = cruiseSpeedKmh;
         }
       }
 
@@ -390,7 +412,7 @@ export function createBusTraffic(
   });
 
   return {
-    update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight = true) {
+    update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight = true, onHorn) {
       if (pendingModelIndex < pendingModelBuilds.length) {
         const [unit, template] = pendingModelBuilds[pendingModelIndex++];
         unit.setTemplate(template);
@@ -399,7 +421,7 @@ export function createBusTraffic(
       for (const u of units) {
         u.group.visible = Math.abs(taxiLateral - roadCenterX(taxiZ)) <= 13;
         if (!u.group.visible) continue;
-        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight, units);
+        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, isNight, units, onHorn);
       }
     },
   };

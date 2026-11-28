@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { STPAUL_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { GANGA_NORTH_BANK_Z, GANGA_SOUTH_BANK_Z, STPAUL_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 import { loadGLTF } from './gltfCache.js';
 
 export const DEFAULT_BUILDING_MODELS = [
@@ -269,6 +269,10 @@ export function createBuildingLoopSystem(
         }
 
         if (!slot.loaded) continue;
+        if (slot.z <= GANGA_SOUTH_BANK_Z + 12 && slot.z >= GANGA_NORTH_BANK_Z - 12) {
+          slot.root.visible = false;
+          continue;
+        }
         const inRange = slot.z <= playerZ + 60 && slot.z >= playerZ - 240;
         slot.root.visible = inRange;
         if (!inRange) continue;

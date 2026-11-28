@@ -1,0 +1,15 @@
+# Unused / superseded 3D models (kept locally, excluded from Git)
+kolkata-cab/models/building2.glb
+kolkata-cab/models/tree2.glb
+kolkata-cab/models/tree3.glb
+kolkata-cab/models/netaji.glb
+kolkata-cab/models/victoria.glb
+kolkata-cab/models/victoria_memorial.glb
+
+# Local screen recordings & test media
+kolkata-cab/sample/
+
+# Dependencies & OS/editor artifacts
+node_modules/
+.DS_Store
+Thumbs.db

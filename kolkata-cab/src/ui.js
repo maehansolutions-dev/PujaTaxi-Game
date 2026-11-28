@@ -2,6 +2,7 @@ import {
   ALLEY_LENGTH,
   ALLEY_WIDTH,
   COLLEGE_CROSSING_Z,
+  COLLEGE_MERGE_Z,
   COLLEGE_STREET_WIDTH,
   COLLEGE_STREET_X,
   COLLEGE_TURN_Z,
@@ -9,6 +10,11 @@ import {
   CROSS_STREET_WIDTH,
   EDEN_X,
   EDEN_Z,
+  GANGA_NORTH_BANK_Z,
+  GANGA_SOUTH_BANK_Z,
+  HOWRAH_BRIDGE_END_Z,
+  HOWRAH_BRIDGE_START_Z,
+  HOWRAH_BRIDGE_Z,
   NETAJI_CROSSING_Z,
   ROAD_ALLEY_OFFSET,
   ROAD_BLOCK_SPACING,
@@ -18,14 +24,15 @@ import {
   VICTORIA_ROAD_WIDTH,
   VICTORIA_ROAD_X,
   VICTORIA_TURN_Z,
+  collegeStreetCenterX,
   roadCenterX,
 } from './roadLayout.js';
 
-const money = (value) => `\u20b9 ${Number(value || 0).toFixed(2)}`;
+const money = (value) => Number(value || 0).toFixed(2);
 
 export function createHud(config, onCredit = () => {}) {
   const el = (id) => document.getElementById(id);
-  const wallet = el('walletValue');
+  const wallet = el('walletNum') || el('walletValue');
   const walletNote = el('walletNote');
   const walletCard = wallet?.closest('.wallet-card');
   const remaining = el('distRemaining');
@@ -35,7 +42,7 @@ export function createHud(config, onCredit = () => {}) {
   const passengerName = el('passengerName');
   const destination = el('passengerDestination');
   const quote = el('passengerQuote');
-  const fare = el('fareValue');
+  const fare = el('fareNum') || el('fareValue');
   const fareLabel = el('fareLabel');
   const fareCard = fare?.closest('.fare-card');
   const map = el('minimap');
@@ -157,23 +164,43 @@ export function createHud(config, onCredit = () => {}) {
     targetCtx.lineWidth = 1.5;
     targetCtx.stroke();
 
-    // College Street corridor
+    // College Street corridor (curves past Coffee House back to main road)
     const cRoadX = cx + (COLLEGE_STREET_X - playerX) * scale;
-    const cTopY = cy + (COLLEGE_CROSSING_Z - playerZ) * scale;
     const cBotY = cy + (COLLEGE_TURN_Z - playerZ) * scale;
-    targetCtx.fillStyle = '#73766e';
-    targetCtx.fillRect(cRoadX - (COLLEGE_STREET_WIDTH / 2) * scale, cTopY, COLLEGE_STREET_WIDTH * scale, cBotY - cTopY);
-    targetCtx.fillRect(cRoadX - 36 * scale, cTopY - 6 * scale, 72 * scale, 12 * scale);
+    targetCtx.save();
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
+    targetCtx.strokeStyle = '#73766e';
+    targetCtx.lineWidth = Math.max(4, COLLEGE_STREET_WIDTH * scale);
+    targetCtx.beginPath();
+    for (let z = COLLEGE_TURN_Z; z >= COLLEGE_MERGE_Z; z -= 8) {
+      const mx = cx + (collegeStreetCenterX(z) - playerX) * scale;
+      const my = cy + (z - playerZ) * scale;
+      if (z === COLLEGE_TURN_Z) targetCtx.moveTo(mx, my);
+      else targetCtx.lineTo(mx, my);
+    }
+    targetCtx.stroke();
+
     targetCtx.strokeStyle = '#c89b54';
     targetCtx.lineWidth = 1;
     targetCtx.beginPath();
-    targetCtx.moveTo(cRoadX, cBotY);
-    targetCtx.lineTo(cRoadX, cTopY);
+    for (let z = COLLEGE_TURN_Z; z >= COLLEGE_MERGE_Z + 12; z -= 8) {
+      const mx = cx + (collegeStreetCenterX(z) - playerX) * scale;
+      const my = cy + (z - playerZ) * scale;
+      if (z === COLLEGE_TURN_Z) targetCtx.moveTo(mx, my);
+      else targetCtx.lineTo(mx, my);
+    }
     targetCtx.stroke();
+    targetCtx.restore();
+
     targetCtx.fillStyle = '#a34b39';
     targetCtx.fillRect(cRoadX - 18 * scale, cy + (-185 - playerZ) * scale, 9 * scale, 24 * scale);
     targetCtx.fillStyle = '#f0ece1';
-    targetCtx.fillRect(cRoadX - 18 * scale, cy + (-265 - playerZ) * scale, 9 * scale, 28 * scale);
+    targetCtx.fillRect(cRoadX - 18 * scale, cy + (-240 - playerZ) * scale, 9 * scale, 20 * scale);
+    targetCtx.fillStyle = '#ffffff';
+    targetCtx.fillRect(cRoadX - 24 * scale, cy + (-300 - playerZ) * scale, 14 * scale, 34 * scale);
+    targetCtx.fillStyle = '#d4af37';
+    targetCtx.fillRect(cx + (collegeStreetCenterX(-342) - 22 - playerX) * scale, cy + (-348 - playerZ) * scale, 12 * scale, 12 * scale);
 
     // Netaji statue pedestal roundabout at z = -240 crossing
     const netX = cx + (roadCenterX(NETAJI_CROSSING_Z) - playerX) * scale;
@@ -226,12 +253,41 @@ export function createHud(config, onCredit = () => {}) {
       targetCtx.fillText('NETAJI STATUE', netX, netY - 12);
       targetCtx.fillText('COLLEGE STREET', cRoadX, cBotY + 18);
       targetCtx.fillStyle = '#d9b5a6';
-      targetCtx.fillText('MEDICAL COLLEGE', cRoadX - 68, cy + (-172 - playerZ) * scale);
+      targetCtx.fillText('MEDICAL COLLEGE', cRoadX - 68, cy + (-168 - playerZ) * scale);
       targetCtx.fillStyle = '#e5e2d7';
-      targetCtx.fillText('CALCUTTA UNIV.', cRoadX - 66, cy + (-252 - playerZ) * scale);
+      targetCtx.fillText('CALCUTTA UNIV.', cRoadX - 66, cy + (-228 - playerZ) * scale);
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.fillText('PRESIDENCY UNIV.', cRoadX - 72, cy + (-282 - playerZ) * scale);
+      targetCtx.fillStyle = '#f5d78c';
+      targetCtx.fillText('COFFEE HOUSE', cx + (collegeStreetCenterX(-342) - 58 - playerX) * scale, cy + (-342 - playerZ) * scale);
     }
 
     const point = (p) => ({ x: cx + (p.x - playerX) * scale, y: cy + (p.z - playerZ) * scale });
+
+    // Ganga River (blue ONLY on the map!) + Howrah Bridge crossing
+    const gTopY = cy + (GANGA_NORTH_BANK_Z - playerZ) * scale;
+    const gBotY = cy + (GANGA_SOUTH_BANK_Z - playerZ) * scale;
+    targetCtx.fillStyle = '#2563a6';
+    targetCtx.fillRect(0, gTopY, w, gBotY - gTopY);
+    targetCtx.fillStyle = '#4a85c4';
+    targetCtx.fillRect(0, gTopY - 2, w, 2);
+    targetCtx.fillRect(0, gBotY, w, 2);
+
+    const bTopY = cy + (HOWRAH_BRIDGE_END_Z - playerZ) * scale;
+    const bBotY = cy + (HOWRAH_BRIDGE_START_Z - playerZ) * scale;
+    const bX = cx + (0 - playerX) * scale;
+    targetCtx.fillStyle = '#8b959e';
+    targetCtx.fillRect(bX - 11 * scale, bTopY, 22 * scale, bBotY - bTopY);
+    targetCtx.fillStyle = '#4f555b';
+    targetCtx.fillRect(bX - 9 * scale, bTopY, 18 * scale, bBotY - bTopY);
+    if (showLabels) {
+      targetCtx.font = '600 11px "DM Mono", monospace';
+      targetCtx.textAlign = 'center';
+      targetCtx.fillStyle = '#bae0ff';
+      targetCtx.fillText('GANGA RIVER', bX - 95 * scale, cy + (HOWRAH_BRIDGE_Z - playerZ) * scale);
+      targetCtx.fillStyle = '#f7edd2';
+      targetCtx.fillText('HOWRAH BRIDGE', bX + 75 * scale, cy + (HOWRAH_BRIDGE_Z - playerZ) * scale);
+    }
 
     // Green GPS route along the road when a passenger is on board
     if (onTrip && snap.destination) {

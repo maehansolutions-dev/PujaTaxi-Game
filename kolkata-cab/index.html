@@ -17,7 +17,7 @@
     <section class="cash-card glass-card" aria-label="Wallet and trip distances">
       <div class="cash-cell wallet-card">
         <span class="eyebrow">DRIVER CASH</span>
-        <strong id="walletValue">&#8377; 0.00</strong>
+        <strong id="walletValue"><svg class="coin-icon" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="cg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe885"/><stop offset=".5" stop-color="#eab01e"/><stop offset="1" stop-color="#9e6604"/></linearGradient></defs><circle cx="32" cy="32" r="30" fill="url(#cg1)" stroke="#7a4d02" stroke-width="2"/><circle cx="32" cy="32" r="26" fill="none" stroke="#fff3b0" stroke-width="2.2" stroke-dasharray="2.1 1.7"/><polygon points="32,10 37.5,16 32,22 26.5,16" fill="#fff2aa" stroke="#7a4d02" stroke-width="1.4"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#6e4402" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#ffe47a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="37" r="4.2" fill="#ffe47a" stroke="#6e4402" stroke-width="1.5"/></svg><span id="walletNum">0.00</span></strong>
         <small id="walletNote">FARES CREDITED ON DROP-OFF</small>
       </div>
       <div class="cash-cell">
@@ -87,8 +87,8 @@
         <div class="rpm-readout"><span class="eyebrow">ENGINE TACHO</span><strong><span id="rpmValue">800</span> <small>RPM</small></strong><div class="rpm-track"><i id="rpmBar"></i></div></div>
       </div>
       <div class="fare-readout fare-card">
-        <div><span class="eyebrow" id="fareLabel">CALCUTTA TAXI FARE METER</span><strong id="fareValue">&#8377; 0.00</strong></div>
-        <span class="fare-rule">&#8377;50 / GAME-M</span>
+        <div><span class="eyebrow" id="fareLabel">CALCUTTA TAXI FARE METER</span><strong id="fareValue"><svg class="coin-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="url(#cg1)" stroke="#7a4d02" stroke-width="2"/><circle cx="32" cy="32" r="26" fill="none" stroke="#fff3b0" stroke-width="2.2" stroke-dasharray="2.1 1.7"/><polygon points="32,10 37.5,16 32,22 26.5,16" fill="#fff2aa" stroke="#7a4d02" stroke-width="1.4"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#6e4402" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#ffe47a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="37" r="4.2" fill="#ffe47a" stroke="#6e4402" stroke-width="1.5"/></svg><span id="fareNum">0.00</span></strong></div>
+        <span class="fare-rule"><svg class="coin-icon coin-icon-sm" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="url(#cg1)" stroke="#7a4d02" stroke-width="2"/><polygon points="32,10 37.5,16 32,22 26.5,16" fill="#fff2aa" stroke="#7a4d02" stroke-width="1.4"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#6e4402" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#ffe47a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>50 / GAME-M</span>
       </div>
     </section>
 
@@ -108,12 +108,11 @@
             <linearGradient id="wheelChrome" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#e5e7df"/><stop offset=".45" stop-color="#7e8989"/><stop offset="1" stop-color="#d2d4cc"/></linearGradient>
             <linearGradient id="wheelRim" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#535b5b"/><stop offset=".45" stop-color="#111718"/><stop offset="1" stop-color="#343c3d"/></linearGradient>
           </defs>
-          <circle cx="100" cy="100" r="87" fill="none" stroke="url(#wheelRim)" stroke-width="13"/>
-          <circle cx="100" cy="100" r="82" fill="none" stroke="#c5ccc5" stroke-opacity=".38" stroke-width="1.5"/>
-          <path d="M100 99 L100 20 M94 101 L49 151 M106 101 L151 151" fill="none" stroke="url(#wheelChrome)" stroke-width="6" stroke-linecap="round"/>
-          <circle cx="100" cy="100" r="23" fill="#293334" stroke="url(#wheelChrome)" stroke-width="3"/>
-          <circle cx="100" cy="100" r="15" fill="#c9a445" stroke="#f1d889" stroke-width="1.5"/>
-          <path d="M91 101 Q100 94 109 101 Q100 108 91 101Z" fill="#352d1b" opacity=".8"/>
+          <circle cx="100" cy="100" r="87" fill="none" stroke="url(#wheelRim)" stroke-width="16"/>
+          <circle cx="100" cy="100" r="80" fill="none" stroke="#454c4d" stroke-opacity=".45" stroke-width="1.5"/>
+          <path d="M18 92 L78 104 M182 92 L122 104" fill="none" stroke="url(#wheelRim)" stroke-width="15" stroke-linecap="round"/>
+          <rect x="68" y="83" width="64" height="40" rx="11" fill="#1b2022" stroke="#474f52" stroke-width="2.5"/>
+          <rect x="86" y="96" width="28" height="14" rx="4" fill="#c9a445" opacity=".9"/>
         </svg>
         <span class="wheel-caption">STEER</span>
       </button>

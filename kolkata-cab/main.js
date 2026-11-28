@@ -26,6 +26,8 @@ import { createCollegeStreetCorridor } from './src/collegeStreet.js';
 import { createNetajiMonument } from './src/netajiMonument.js';
 import { createEdenGardensLandmark } from './src/edenGardens.js';
 import { createStPaulsCathedralLandmark } from './src/stPaulsCathedral.js';
+import { createHowrahBridgeLandmark } from './src/howrahBridge.js';
+import { getBridgeElevationY } from './src/roadLayout.js';
 import { createPassengerSystem } from './src/passengers.js';
 import { createHud } from './src/ui.js';
 import { createTrafficSystem } from './src/traffic.js';
@@ -55,6 +57,8 @@ const edenGardens = createEdenGardensLandmark(scene);
 edenGardens.setNightMode(road.getTimeOfDay() === 'night');
 const stPaulsCathedral = createStPaulsCathedralLandmark(scene);
 stPaulsCathedral.setNightMode(road.getTimeOfDay() === 'night');
+const howrahBridge = createHowrahBridgeLandmark(scene);
+howrahBridge.setNightMode(road.getTimeOfDay() === 'night');
 const taxi = createTaxi();
 scene.add(taxi);
 
@@ -146,8 +150,8 @@ applyQuality();
 const CAMERA_MODES = [
   { id: 'chase', label: 'CHASE CAM', desc: 'Third-person chase camera' },
   { id: 'driver', label: 'DRIVER CAM', desc: 'Driver seat · Drag to look front or left window' },
-  { id: 'passengerFront', label: 'PASSENGER · FRONT', desc: 'Passenger seat · Drag 360° around cabin & windows' },
-  { id: 'passengerWindow', label: 'PASSENGER · WINDOW', desc: 'Back seat window view · Drag 360°' },
+  { id: 'passengerFront', label: 'PASSENGER · BACK LEFT', desc: 'Back-left passenger seat · Drag 360° around cabin & windows' },
+  { id: 'passengerWindow', label: 'PASSENGER · WINDOW', desc: 'Back right window view · Drag 360°' },
 ];
 
 const chaseTarget = new THREE.Vector3();
@@ -213,9 +217,11 @@ function showToast(title, message) {
   showToast.timer = setTimeout(() => controls.toast.classList.remove('visible'), 2300);
 }
 
+const COIN_BADGE = '<svg class="coin-icon coin-icon-sm" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#eab01e" stroke="#7a4d02" stroke-width="2"/><polygon points="32,10 37.5,16 32,22 26.5,16" fill="#fff2aa" stroke="#7a4d02" stroke-width="1.4"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#6e4402" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 46V21L32 36L48 21V46" fill="none" stroke="#ffe47a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 const passengers = createPassengerSystem(scene, CONFIG, (event, data) => {
   if (event === 'pickup') showToast('PASSENGER ON BOARD', `Destination: ${data.destination}`);
-  if (event === 'dropoff') showToast('FARE COMPLETED', `\u20b9${data.fare.toFixed(2)} added to driver cash`);
+  if (event === 'dropoff') showToast('FARE COMPLETED', `${COIN_BADGE}${data.fare.toFixed(2)} added to driver cash`);
 });
 const hud = createHud(CONFIG);
 const traffic = createTrafficSystem(scene, CONFIG, (event, data) => {
@@ -300,16 +306,18 @@ function update(dt) {
   state.distance += Math.abs(moveStep);
 
   const motionScale = Math.min(1, Math.abs(state.speed) / 25);
+  const bridgeY = getBridgeElevationY(state.z);
+  const bridgePitch = Math.atan((getBridgeElevationY(state.z - 1) - getBridgeElevationY(state.z + 1)) * 0.5);
   taxi.position.set(
     state.lateral,
-    Math.sin(performance.now() * 0.006) * Math.min(0.015, Math.abs(state.speed) * 0.00012),
+    bridgeY + Math.sin(performance.now() * 0.006) * Math.min(0.015, Math.abs(state.speed) * 0.00012),
     state.z
   );
   taxi.rotation.y = state.heading;
   taxi.rotation.z = 0;
 
   taxi.userData.body.rotation.z = -state.steer * 0.012 * motionScale;
-  taxi.userData.body.rotation.x = braking && state.speed > 1 ? -0.022 : accelerating ? 0.007 : 0;
+  taxi.userData.body.rotation.x = bridgePitch * Math.cos(state.heading) + (braking && state.speed > 1 ? -0.022 : accelerating ? 0.007 : 0);
 
   const isNight = road.getTimeOfDay() === 'night';
   headLight.intensity = state.headlightsOn && isNight ? 22 : state.headlightsOn ? 6 : 0;
@@ -324,15 +332,19 @@ function update(dt) {
   updateTaxiWheels(taxi, dt, moveStep / Math.max(dt, 0.0001), -state.steer * 0.32);
   cabinInterior.update(state.steer, performance.now());
   openWorld?.update(state.lateral, state.z, dt);
-  autoTraffic?.update(state.lateral, state.z, state.speed, dt);
-  jettaTraffic?.update(state.lateral, state.z, state.speed, dt, isNight);
-  busTraffic?.update(state.lateral, state.z, state.speed, dt, isNight);
+  const trafficHorn = () => traffic.honk();
+  autoTraffic?.update(state.lateral, state.z, state.speed, dt, trafficHorn);
+  jettaTraffic?.update(state.lateral, state.z, state.speed, dt, isNight, trafficHorn);
+  busTraffic?.update(state.lateral, state.z, state.speed, dt, isNight, trafficHorn);
   pedestrians?.update(state.z, dt);
+  collegeStreet?.update?.(dt, performance.now() * 0.001);
+  howrahBridge?.update?.(dt, performance.now() * 0.001);
   passengers.update(state.lateral, state.z, state.speed, dt);
   hud.update(passengers.getSnapshot(state.lateral, state.z), state.lateral, state.z, state.heading);
   traffic.update(state.lateral, state.z, state.speed, dt, camera.position);
 
-  if (controls.speed) controls.speed.textContent = String(Math.round(Math.abs(state.speed))).padStart(2, '0');
+  const displaySpeedKmh = Math.abs(state.speed) * (60 / 96);
+  if (controls.speed) controls.speed.textContent = String(Math.round(displaySpeedKmh)).padStart(2, '0');
   if (controls.gear) controls.gear.textContent = reverse ? 'R' : Math.abs(state.speed) < 1 ? 'N' : 'D';
   const rpm = Math.round(800 + Math.abs(state.speed) * 34 + (accelerating ? 900 : 0));
   if (controls.rpm) controls.rpm.textContent = String(rpm);
@@ -374,6 +386,7 @@ function setCamera(dt) {
   const isChase = state.camera === 'chase';
   taxi.userData.body.visible = isChase;
   cabinInterior.group.visible = !isChase;
+  cabinInterior.setDriverVisible(state.camera !== 'driver');
 
   if (state.camera === 'chase') {
     const nextFov = 68 + Math.min(10, Math.abs(state.speed) * 0.065);
@@ -389,13 +402,13 @@ function setCamera(dt) {
     camera.position.y += Math.sin(performance.now() * 0.019) * shake * 0.01;
     camera.position.x += Math.sin(performance.now() * 0.013) * shake * 0.007;
   } else if (state.camera === 'driver') {
-    if (camera.fov !== 72) { camera.fov = 72; camera.updateProjectionMatrix(); }
-    const camPos = localToWorld(0.42, 1.32, -0.18);
+    if (camera.fov !== 74) { camera.fov = 74; camera.updateProjectionMatrix(); }
+    const camPos = localToWorld(0.44, 1.33, -0.22);
     camera.position.copy(camPos);
     setLookTargetFromAngles(camPos, state.lookYaw, state.lookPitch, 22);
   } else if (state.camera === 'passengerFront') {
-    if (camera.fov !== 74) { camera.fov = 74; camera.updateProjectionMatrix(); }
-    const camPos = localToWorld(-0.34, 1.30, 0.56);
+    if (camera.fov !== 75) { camera.fov = 75; camera.updateProjectionMatrix(); }
+    const camPos = localToWorld(-0.38, 1.31, 0.58);
     camera.position.copy(camPos);
     setLookTargetFromAngles(camPos, state.lookYaw, state.lookPitch, 18);
   } else if (state.camera === 'passengerWindow') {
@@ -551,6 +564,7 @@ window.addEventListener('keydown', (event) => {
     netajiMonument?.setNightMode(nextMode === 'night');
     edenGardens?.setNightMode(nextMode === 'night');
     stPaulsCathedral?.setNightMode(nextMode === 'night');
+    howrahBridge?.setNightMode(nextMode === 'night');
     traffic.setRainEnabled(nextMode !== 'day');
     renderer.toneMappingExposure = CONFIG.exposure;
     bloomPass.strength = CONFIG.bloomStrength;

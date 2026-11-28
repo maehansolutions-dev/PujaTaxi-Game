@@ -246,43 +246,60 @@ function createAutoUnit(
   let initialized = false;
   let autoZ = initialRelZ;
   let currentX = laneX;
+  let currentSpeed = cruiseSpeedKmh;
+  let lastHornAt = -10;
 
   return {
     group: root,
     setTemplate(srcScene) {
       attachNormalized(srcScene);
     },
-    update(taxiLateral, taxiZ, _taxiSpeedKmh, dt) {
+    update(taxiLateral, taxiZ, _taxiSpeedKmh, dt, onHorn) {
       if (!initialized) {
         autoZ = taxiZ + initialRelZ;
         initialized = true;
       }
 
-      const time = performance.now() * 0.001 + phase;
-      const effectiveSpeedKmh = cruiseSpeedKmh + Math.sin(time * 0.85) * 4;
-      const deltaZ = effectiveSpeedKmh * WORLD_UNIT_PER_KMH_PER_SEC * dt;
+      const nowSec = performance.now() * 0.001;
+      const time = nowSec + phase;
+      let targetSpeed = cruiseSpeedKmh + Math.sin(time * 0.85) * 4;
+
+      // Stop and blow horn if the player's taxi blocks this lane
+      let targetX = laneX + Math.sin(time * 0.9) * 0.14;
+      const localTaxiX = taxiLateral - roadCenterX(taxiZ);
+      const lateralBlocked = Math.abs(currentX - localTaxiX) < 2.15;
+      const gapToTaxi = oncoming ? taxiZ - autoZ : autoZ - taxiZ;
+      if (lateralBlocked && gapToTaxi > -1.8 && gapToTaxi < 6.8) {
+        targetSpeed = 0;
+        if (nowSec - lastHornAt > 2.6) {
+          onHorn?.();
+          lastHornAt = nowSec;
+        }
+      } else if (lateralBlocked && gapToTaxi >= 6.8 && gapToTaxi < 15.0) {
+        targetSpeed = Math.min(targetSpeed, cruiseSpeedKmh * 0.35);
+      }
+
+      currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, dt * (targetSpeed === 0 ? 7.5 : 3.2));
+      currentSpeed = Math.max(0, currentSpeed);
+      const deltaZ = currentSpeed * WORLD_UNIT_PER_KMH_PER_SEC * dt;
 
       if (oncoming) {
         autoZ += deltaZ;
         if (autoZ > taxiZ + 18) {
           autoZ = taxiZ - 85 - ((phase * 9) % 24);
+          currentSpeed = cruiseSpeedKmh;
         }
       } else {
         autoZ -= deltaZ;
         if (autoZ > taxiZ + 28) {
           autoZ = taxiZ - 68;
+          currentSpeed = cruiseSpeedKmh;
         } else if (autoZ < taxiZ - 85) {
           autoZ = taxiZ + 22;
+          currentSpeed = cruiseSpeedKmh;
         }
       }
 
-      let targetX = laneX + Math.sin(time * 0.9) * 0.14;
-      const localTaxiX = taxiLateral - roadCenterX(taxiZ);
-      const dx = targetX - localTaxiX;
-      const dz = autoZ - taxiZ;
-      if (!oncoming && Math.abs(dx) < 2.2 && Math.abs(dz) < 7.5) {
-        targetX = localTaxiX + (dx >= 0 ? 2.4 : -2.4);
-      }
       targetX = THREE.MathUtils.clamp(targetX, -6.2, 6.2);
       currentX = THREE.MathUtils.lerp(currentX, targetX, 1 - Math.exp(-4 * dt));
 
@@ -344,7 +361,7 @@ export function createAutoTraffic(
     }).catch(() => {});
 
   return {
-    update(taxiLateral, taxiZ, taxiSpeedKmh, dt) {
+    update(taxiLateral, taxiZ, taxiSpeedKmh, dt, onHorn) {
       if (pendingModelIndex < pendingModelBuilds.length) {
         const [unit, template] = pendingModelBuilds[pendingModelIndex++];
         unit.setTemplate(template);
@@ -353,7 +370,7 @@ export function createAutoTraffic(
       for (const u of units) {
         u.group.visible = Math.abs(taxiLateral - roadCenterX(taxiZ)) <= 13;
         if (!u.group.visible) continue;
-        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt);
+        u.update(taxiLateral, taxiZ, taxiSpeedKmh, dt, onHorn);
       }
     },
   };

@@ -372,7 +372,7 @@
 import * as THREE from 'three';
 import { DEFAULT_BUILDING_MODELS } from './buildings.js';
 import { DEFAULT_TREE_MODELS, normalizeTreeModel } from './trees.js';
-import { ALLEY_LENGTH, ALLEY_WIDTH, COLLEGE_CROSSING_Z, COLLEGE_STREET_WIDTH, COLLEGE_STREET_X, COLLEGE_TURN_Z, CROSS_STREET_LENGTH, CROSS_STREET_WIDTH, EDEN_X, EDEN_Z, NETAJI_CROSSING_Z, ROAD_ALLEY_OFFSET, ROAD_BLOCK_SPACING, STPAUL_X, STPAUL_Z, VICTORIA_PLAZA_Z, VICTORIA_ROAD_WIDTH, VICTORIA_ROAD_X, VICTORIA_TURN_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { ALLEY_LENGTH, ALLEY_WIDTH, COLLEGE_CROSSING_Z, COLLEGE_MERGE_Z, COLLEGE_STREET_WIDTH, COLLEGE_STREET_X, COLLEGE_TURN_Z, CROSS_STREET_LENGTH, CROSS_STREET_WIDTH, EDEN_X, EDEN_Z, GANGA_NORTH_BANK_Z, GANGA_SOUTH_BANK_Z, NETAJI_CROSSING_Z, ROAD_ALLEY_OFFSET, ROAD_BLOCK_SPACING, STPAUL_X, STPAUL_Z, VICTORIA_PLAZA_Z, VICTORIA_ROAD_WIDTH, VICTORIA_ROAD_X, VICTORIA_TURN_Z, collegeStreetAngle, collegeStreetCenterX, isOverGangaRiver, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 import { loadGLTF } from './gltfCache.js';
 
 const INTERSECTION_SPACING = ROAD_BLOCK_SPACING;
@@ -627,7 +627,12 @@ export function createOpenWorldNetwork(scene, config) {
     (Math.abs(wx - VICTORIA_ROAD_X) <= 14 && wz <= VICTORIA_TURN_Z - 4 && wz >= VICTORIA_PLAZA_Z) ||
     (wx >= 44 && wx <= 150 && wz <= VICTORIA_PLAZA_Z + 8 && wz >= VICTORIA_PLAZA_Z - 125);
   const isVictoriaOpening = (wx, wz) => Math.abs(wx - VICTORIA_ROAD_X) <= VICTORIA_ROAD_WIDTH / 2 + 4 && Math.abs(wz - VICTORIA_TURN_Z) <= 14;
-  const inCollegeZone = (wx, wz) => wx <= -46 && wx >= -125 && wz <= COLLEGE_TURN_Z - 4 && wz >= COLLEGE_CROSSING_Z - 24;
+  const inCollegeZone = (wx, wz) =>
+    wz <= COLLEGE_TURN_Z - 4 &&
+    wz >= COLLEGE_MERGE_Z - 12 &&
+    wx <= collegeStreetCenterX(wz) + 30 &&
+    wx >= collegeStreetCenterX(wz) - 52 &&
+    Math.abs(wx - roadCenterX(wz)) > 16;
   const isCollegeOpening = (wx, wz) => Math.abs(wx - COLLEGE_STREET_X) <= COLLEGE_STREET_WIDTH / 2 + 4 && Math.abs(wz - COLLEGE_TURN_Z) <= 14;
   const inEdenZone = (wx, wz) => wx >= 24 && wx <= 142 && wz <= EDEN_Z + 46 && wz >= EDEN_Z - 46;
   for (let i = -5; i <= 3; i++) {
@@ -910,6 +915,7 @@ export function createOpenWorldNetwork(scene, config) {
     const lx = x - roadCenterX(z);
     const mainHalfWidth = config.roadHalfWidth - config.collisionHalfWidth;
     if (Math.abs(lx) <= mainHalfWidth) return true;
+    if (isOverGangaRiver(z)) return false;
     const mod80 = ((z % INTERSECTION_SPACING) + INTERSECTION_SPACING) % INTERSECTION_SPACING;
     const distCross = Math.min(mod80, INTERSECTION_SPACING - mod80);
     const crossCenterLimit = CROSS_STREET_LENGTH / 2 - config.collisionHalfLength;
@@ -927,13 +933,12 @@ export function createOpenWorldNetwork(scene, config) {
     ) return true;
     if (Math.abs(x - VICTORIA_ROAD_X) <= 18 && z <= VICTORIA_PLAZA_Z + 4 && z >= VICTORIA_PLAZA_Z - 7) return true;
 
-    // College Street corridor (turn left at z = -80, then 1st right at x = -76 northbound) & College St Crossing
-    if (
-      Math.abs(x - COLLEGE_STREET_X) <= (COLLEGE_STREET_WIDTH - config.collisionHalfWidth * 2) / 2 &&
-      z <= COLLEGE_TURN_Z + 6 &&
-      z >= COLLEGE_CROSSING_Z - 12
-    ) return true;
-    if (Math.abs(x - COLLEGE_STREET_X) <= 36 && z <= COLLEGE_CROSSING_Z + 2 && z >= COLLEGE_CROSSING_Z - 14) return true;
+    // College Street corridor (turn left at z = -80, then 1st right at x = -76 northbound, curving past Coffee House back to main road)
+    if (z <= COLLEGE_TURN_Z + 6 && z >= COLLEGE_MERGE_Z - 6) {
+      const cx = collegeStreetCenterX(z);
+      const halfW = (COLLEGE_STREET_WIDTH - config.collisionHalfWidth * 2) / 2;
+      if (Math.abs(x - cx) * Math.cos(collegeStreetAngle(z)) <= halfW) return true;
+    }
 
     // Eden Gardens East Perimeter Road (x = 126, connecting z = -320 and z = -400 around the stadium)
     if (Math.abs(x - 126) <= 5.0 && z <= -314 && z >= -406) return true;
@@ -1022,7 +1027,8 @@ export function createOpenWorldNetwork(scene, config) {
 
         n.nodeGroup.position.set(roadCenterX(n.z), 0, n.z);
         n.nodeGroup.rotation.y = roadAngle(n.z);
-        n.nodeGroup.visible = Math.abs(n.z - playerZ) < 200;
+        const inRiverBand = n.z <= GANGA_SOUTH_BANK_Z + 15 && n.z >= GANGA_NORTH_BANK_Z - 15;
+        n.nodeGroup.visible = !inRiverBand && Math.abs(n.z - playerZ) < 200;
         // Hide recycled west-side (-X) buildings/stalls/alley meshes when a node overlaps St. Paul's Cathedral (z = -520)
         const overlapsStPaul = Math.abs(n.z - (-480)) < 14 || Math.abs(n.z - (-560)) < 14;
         for (const child of n.nodeGroup.children) {

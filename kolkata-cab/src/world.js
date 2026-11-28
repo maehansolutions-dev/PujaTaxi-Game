@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createLandmarks, dressChunk } from './street.js';
 import { createTreeSystem } from './trees.js';
 import { createBuildingLoopSystem } from './buildings.js';
-import { isChunkRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { GANGA_NORTH_BANK_Z, GANGA_SOUTH_BANK_Z, isChunkRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 
 export const CONFIG = {
   fareRsPerGameMetre: 50,
@@ -860,7 +860,8 @@ export function createWorld(scene, renderer) {
       // Animate only nearby road dressing. The static instances remain visible,
       // but updating every pedestrian in every distant chunk wastes CPU.
       for (const chunk of chunks) {
-        if (Math.abs(chunk.position.z - playerZ) < CONFIG.chunkLength * 1.5) {
+        chunk.visible = chunk.position.z > GANGA_SOUTH_BANK_Z - 15 || chunk.position.z < GANGA_NORTH_BANK_Z + 15;
+        if (chunk.visible && Math.abs(chunk.position.z - playerZ) < CONFIG.chunkLength * 1.5) {
           chunk.userData.animatePeople?.(time);
         }
       }

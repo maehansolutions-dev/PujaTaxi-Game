@@ -4,29 +4,20 @@ function makeSwirlFabricTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#5c1420';
+  // Classic Kolkata Ambassador black + maroon two-tone vinyl seat pattern
+  ctx.fillStyle = '#17191c';
   ctx.fillRect(0, 0, 256, 256);
-
-  for (let i = 0; i < 42; i++) {
-    ctx.strokeStyle =
-      i % 3 === 0
-        ? 'rgba(225,198,184,0.42)'
-        : i % 3 === 1
-        ? 'rgba(138,28,44,0.65)'
-        : 'rgba(42,8,14,0.55)';
-    ctx.lineWidth = 3 + (i % 4) * 2.2;
-    ctx.beginPath();
-    const y0 = (i / 42) * 256;
-    for (let x = 0; x <= 256; x += 16) {
-      const y = y0 + Math.sin(x * 0.045 + i * 0.7) * 18 + Math.cos(x * 0.02 - i * 0.4) * 10;
-      if (x === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+  ctx.fillStyle = '#752126';
+  ctx.fillRect(24, 16, 84, 224);
+  ctx.fillRect(148, 16, 84, 224);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 3;
+  for (let y = 32; y < 256; y += 36) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2.5, 2.5);
+  tex.repeat.set(1, 1);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -36,24 +27,27 @@ function makeMeterTexture() {
   canvas.width = 256;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#0e1312';
+  ctx.fillStyle = '#090b0c';
   ctx.fillRect(0, 0, 256, 128);
-  ctx.strokeStyle = '#575e59';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(5, 5, 246, 118);
+  ctx.strokeStyle = '#383d40';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(4, 4, 248, 120);
 
-  ctx.fillStyle = '#c8a64b';
-  ctx.font = '600 15px monospace';
+  ctx.fillStyle = '#8b9296';
+  ctx.font = '600 14px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('CALCUTTA FARE METER', 128, 28);
+  ctx.fillText('DIGITAL FARE METER', 128, 26);
 
-  ctx.fillStyle = '#e5b84b';
-  ctx.font = 'bold 34px monospace';
-  ctx.fillText('₹ 30.00', 128, 76);
+  // Red LED readout matching real Kolkata taxi meter in photo
+  ctx.fillStyle = '#190606';
+  ctx.fillRect(28, 38, 200, 54);
+  ctx.fillStyle = '#ff382e';
+  ctx.font = 'bold 38px monospace';
+  ctx.fillText('P-18  30', 128, 76);
 
-  ctx.fillStyle = '#5ec48e';
+  ctx.fillStyle = '#3bd675';
   ctx.font = '600 13px monospace';
-  ctx.fillText('FOR HIRE', 128, 106);
+  ctx.fillText('FOR HIRE', 128, 112);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -65,29 +59,26 @@ function makeGaugeClusterTexture() {
   canvas.width = 256;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#0e1312';
+  ctx.fillStyle = '#090d0b';
   ctx.fillRect(0, 0, 256, 128);
-  ctx.strokeStyle = '#575e59';
+  ctx.strokeStyle = '#2d3632';
   ctx.lineWidth = 4;
   ctx.strokeRect(5, 5, 246, 118);
 
-  // Crisp thin dial arcs instead of thick bloom rings
-  ctx.strokeStyle = '#e0b656';
-  ctx.lineWidth = 2;
+  // Green backlit Ambassador dial rings matching photo
+  ctx.strokeStyle = '#48e585';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(82, 66, 30, Math.PI * 0.85, Math.PI * 2.15);
   ctx.stroke();
-
-  ctx.strokeStyle = '#5ec48e';
   ctx.beginPath();
   ctx.arc(176, 66, 24, Math.PI * 0.85, Math.PI * 2.15);
   ctx.stroke();
 
-  ctx.fillStyle = '#d8be78';
+  ctx.fillStyle = '#7cf2a8';
   ctx.font = '600 13px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('KM/H', 82, 106);
-  ctx.fillStyle = '#8ad4ad';
   ctx.fillText('FUEL', 176, 102);
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -238,11 +229,11 @@ export function createCabinInterior() {
 
   const yellowPaint = new THREE.MeshStandardMaterial({ color: 0xd9a20d, roughness: 0.38, metalness: 0.08 });
   const darkVinyl = new THREE.MeshStandardMaterial({ color: 0x16191b, roughness: 0.8, metalness: 0.05 });
-  const dashMat = new THREE.MeshStandardMaterial({ color: 0x191d20, roughness: 0.78, metalness: 0.06 });
-  const headlinerMat = new THREE.MeshStandardMaterial({ color: 0x26231e, roughness: 0.94, side: THREE.DoubleSide });
+  const dashMat = new THREE.MeshStandardMaterial({ color: 0x1a1d20, roughness: 0.78, metalness: 0.06 });
+  const headlinerMat = new THREE.MeshStandardMaterial({ color: 0x6e6352, roughness: 0.94, side: THREE.DoubleSide });
   const chromeMat = new THREE.MeshStandardMaterial({ color: 0xcfd7dc, roughness: 0.18, metalness: 0.88 });
   const seatMat = new THREE.MeshStandardMaterial({ map: makeSwirlFabricTexture(), roughness: 0.85, metalness: 0.02 });
-  const visorMat = new THREE.MeshStandardMaterial({ color: 0x453e33, roughness: 0.9 });
+  const visorMat = new THREE.MeshStandardMaterial({ color: 0x5c5243, roughness: 0.9 });
 
   const windshieldTex = makeWetGlassTexture(41, true);
   const windshieldMat = new THREE.MeshPhysicalMaterial({
@@ -338,62 +329,82 @@ export function createCabinInterior() {
 
   // ---------- Front Dashboard, Bonnet, Meter, Gauges & Steering Wheel (RHD) ----------
   add(new THREE.BoxGeometry(1.56, 0.10, 1.05), yellowPaint, [0, 0.86, -1.78]);
-  add(new THREE.BoxGeometry(1.66, 0.36, 0.34), dashMat, [0, 0.90, -1.04]);
-  add(new THREE.BoxGeometry(0.54, 0.14, 0.03), darkVinyl, [-0.46, 0.84, -0.86]);
-  add(new THREE.BoxGeometry(0.32, 0.08, 0.03), darkVinyl, [0.12, 0.96, -0.86]);
-  add(new THREE.BoxGeometry(0.52, 0.20, 0.22), dashMat, [0.46, 1.08, -1.02]);
+  add(new THREE.BoxGeometry(1.66, 0.28, 0.34), dashMat, [0, 0.88, -1.04]);
+  add(new THREE.BoxGeometry(0.42, 0.10, 0.04), darkVinyl, [0.02, 0.84, -0.86]);
+  add(new THREE.BoxGeometry(0.46, 0.16, 0.22), dashMat, [0.44, 1.02, -1.02]);
 
   const meterTex = makeMeterTexture();
   const meterMat = new THREE.MeshStandardMaterial({
     map: meterTex,
-    emissive: 0xffb84d,
+    emissive: 0xff4538,
     emissiveMap: meterTex,
-    emissiveIntensity: 0.18,
-    roughness: 0.45,
+    emissiveIntensity: 0.25,
+    roughness: 0.4,
   });
-  add(new THREE.BoxGeometry(0.28, 0.15, 0.14), darkVinyl, [0.10, 1.13, -1.00]);
-  add(new THREE.PlaneGeometry(0.25, 0.12), meterMat, [0.10, 1.13, -0.928]);
+  // Compact digital fare meter & GPS box mounted center-dash like photo
+  add(new THREE.BoxGeometry(0.22, 0.10, 0.12), darkVinyl, [-0.02, 1.06, -1.00]);
+  add(new THREE.PlaneGeometry(0.19, 0.08), meterMat, [-0.02, 1.06, -0.938]);
+  add(new THREE.BoxGeometry(0.14, 0.07, 0.06), darkVinyl, [-0.02, 1.15, -1.03]);
 
   const gaugeTex = makeGaugeClusterTexture();
   const gaugeMat = new THREE.MeshStandardMaterial({
     map: gaugeTex,
-    emissive: 0xffb84d,
+    emissive: 0x48e585,
     emissiveMap: gaugeTex,
-    emissiveIntensity: 0.06,
-    roughness: 0.45,
+    emissiveIntensity: 0.12,
+    roughness: 0.42,
   });
-  add(new THREE.PlaneGeometry(0.38, 0.15), gaugeMat, [0.46, 1.09, -0.908]);
+  add(new THREE.PlaneGeometry(0.36, 0.13), gaugeMat, [0.44, 1.03, -0.908]);
 
-  // Subtle localized backlight aimed low onto the instrument binnacle & meter (not the ceiling or charm)
-  const dashGlowLight = new THREE.PointLight(0xffa938, 0, 1.4, 2.2);
-  dashGlowLight.position.set(0.32, 1.04, -0.82);
+  const dashGlowLight = new THREE.PointLight(0x48e585, 0, 1.2, 2.2);
+  dashGlowLight.position.set(0.40, 1.00, -0.82);
   root.add(dashGlowLight);
 
   const steeringWheel = new THREE.Group();
-  steeringWheel.position.set(0.46, 1.02, -0.78);
-  steeringWheel.rotation.x = -0.32;
+  steeringWheel.position.set(0.44, 1.01, -0.76);
+  steeringWheel.rotation.x = -0.38;
   root.add(steeringWheel);
-  steeringWheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.022, 10, 24), darkVinyl));
-  steeringWheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.03, 0.02), darkVinyl));
-  const spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.20, 0.02), darkVinyl);
-  spoke2.position.y = -0.09;
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 14), darkVinyl);
-  hub.rotation.x = Math.PI / 2;
-  steeringWheel.add(spoke2, hub);
+  // Classic Ambassador Mk-IV thick black rim, wide center horn pad & 2 angled spokes
+  steeringWheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.024, 10, 26), darkVinyl));
+  const leftSpoke = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.036, 0.022), darkVinyl);
+  leftSpoke.position.set(-0.10, -0.025, 0);
+  leftSpoke.rotation.z = 0.22;
+  const rightSpoke = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.036, 0.022), darkVinyl);
+  rightSpoke.position.set(0.10, -0.025, 0);
+  rightSpoke.rotation.z = -0.22;
+  const hornPad = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.085, 0.036), dashMat);
+  hornPad.position.set(0, -0.01, 0.01);
+  const hornEmblem = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.02, 0.04), chromeMat);
+  hornEmblem.position.set(0, -0.01, 0.012);
+  steeringWheel.add(leftSpoke, rightSpoke, hornPad, hornEmblem);
 
-  // ---------- Sun Visors, Tucked Hand Fan & Mirror Decoration ----------
-  add(new THREE.BoxGeometry(0.54, 0.14, 0.025), visorMat, [-0.40, 1.52, -0.96], [0.35, 0, 0]);
-  const fanMat = new THREE.MeshStandardMaterial({
-    map: makeHandFanTexture(),
-    transparent: true,
-    roughness: 0.88,
-    side: THREE.DoubleSide,
-  });
-  add(new THREE.PlaneGeometry(0.44, 0.20), fanMat, [-0.36, 1.56, -0.94], [0.35, 0, -0.08]);
-  add(new THREE.BoxGeometry(0.50, 0.14, 0.025), visorMat, [0.42, 1.52, -0.96], [0.35, 0, 0]);
+  // ---------- Sun Visors & Center Rearview Mirror (matching photo) ----------
+  add(new THREE.BoxGeometry(0.54, 0.13, 0.025), visorMat, [-0.42, 1.53, -0.96], [0.32, 0, 0]);
+  add(new THREE.BoxGeometry(0.50, 0.13, 0.025), visorMat, [0.42, 1.53, -0.96], [0.32, 0, 0]);
+  add(new THREE.BoxGeometry(0.025, 0.11, 0.03), darkVinyl, [0.02, 1.54, -0.98]);
+  add(new THREE.BoxGeometry(0.27, 0.085, 0.025), darkVinyl, [0.02, 1.47, -0.95]);
+  add(new THREE.PlaneGeometry(0.24, 0.068), chromeMat, [0.02, 1.47, -0.935]);
 
-  add(new THREE.BoxGeometry(0.26, 0.08, 0.03), darkVinyl, [0.06, 1.46, -0.96]);
-  add(new THREE.PlaneGeometry(0.23, 0.06), chromeMat, [0.06, 1.46, -0.943]);
+  // ---------- Seated Taxi Driver (visible from back-left seat, hidden in driver cam) ----------
+  const driverFigure = new THREE.Group();
+  driverFigure.position.set(0.44, 0.56, -0.22);
+  const shirtMat = new THREE.MeshStandardMaterial({ color: 0xc9c6bc, roughness: 0.85 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0x8b5d42, roughness: 0.72 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x161719, roughness: 0.88 });
+  const dTorso = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.50, 0.22), shirtMat);
+  dTorso.position.set(0, 0.34, 0);
+  const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), hairMat);
+  dHead.position.set(0, 0.71, -0.02);
+  const dFace = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), skinMat);
+  dFace.position.set(0, 0.69, -0.04);
+  const dLeftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.44, 8), shirtMat);
+  dLeftArm.position.set(-0.18, 0.44, -0.24);
+  dLeftArm.rotation.set(1.25, 0, -0.22);
+  const dRightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.44, 8), shirtMat);
+  dRightArm.position.set(0.18, 0.44, -0.24);
+  dRightArm.rotation.set(1.25, 0, 0.22);
+  driverFigure.add(dTorso, dHead, dFace, dLeftArm, dRightArm);
+  root.add(driverFigure);
 
   // Hanging marigold decoration (matte cloth/petal material, never treated as a light)
   const garlandGroup = new THREE.Group();
@@ -436,10 +447,13 @@ export function createCabinInterior() {
 
   return {
     group: root,
+    setDriverVisible(visible) {
+      driverFigure.visible = Boolean(visible);
+    },
     setHeadlights(on) {
-      gaugeMat.emissiveIntensity = on ? 0.52 : 0.05;
-      meterMat.emissiveIntensity = on ? 0.48 : 0.14;
-      dashGlowLight.intensity = on ? 0.45 : 0;
+      gaugeMat.emissiveIntensity = on ? 0.65 : 0.08;
+      meterMat.emissiveIntensity = on ? 0.65 : 0.22;
+      dashGlowLight.intensity = on ? 0.35 : 0;
     },
     update(steer, timeMs) {
       steeringWheel.rotation.z = -steer * 1.4;
