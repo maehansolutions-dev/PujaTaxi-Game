@@ -27,18 +27,28 @@ export function isChunkRoadOpening(localZ, margin = 0) {
 }
 
 export const VICTORIA_TURN_Z = -80;
-export const VICTORIA_ROAD_X = 64;
+export const VICTORIA_ROAD_X = 96;
 export const VICTORIA_ROAD_WIDTH = 13;
 export const VICTORIA_PLAZA_Z = -142;
 
-// Smooth centerline curve: straight past the first two right turns (z = -40, -80), then curves.
+export const COLLEGE_TURN_Z = -80;
+export const COLLEGE_STREET_X = -76;
+export const COLLEGE_STREET_WIDTH = 16;
+export const COLLEGE_CROSSING_Z = -396;
+export const NETAJI_CROSSING_Z = -240;
+export const EDEN_X = 76;
+export const EDEN_Z = -360;
+export const STPAUL_X = -70;
+export const STPAUL_Z = -520;
+
+// Smooth centerline curve: straight past the first two right turns (z = -40, -80), then curves gently (±20m).
 export const CURVE_START_Z = -105;
 export function roadCenterX(z) {
   if (z >= CURVE_START_Z) return 0;
   const d = CURVE_START_Z - z;
   const t = Math.min(1, d / 90);
   const smooth = t * t * (3 - 2 * t);
-  return smooth * 38 * Math.sin(d * 0.011);
+  return smooth * 20 * Math.sin(d * 0.011);
 }
 
 export function roadSlope(z) {

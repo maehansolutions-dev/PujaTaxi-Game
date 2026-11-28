@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { STPAUL_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 import { loadGLTF } from './gltfCache.js';
 
 export const DEFAULT_BUILDING_MODELS = [
@@ -217,7 +217,8 @@ export function createBuildingLoopSystem(
     slot.tintableMaterials = tintableMaterials;
     slot.emissiveMaterials = emissiveMaterials;
     slot.loaded = true;
-    slot.holder.visible = !isRoadOpening(slot.z, slot.extentZ + 0.3);
+    const inStPaulClearing = slot.side === -1 && Math.abs(slot.z - STPAUL_Z) <= 44;
+    slot.holder.visible = !inStPaulClearing && !isRoadOpening(slot.z, slot.extentZ + 0.3);
 
     applyLoopTint(slot, slot.loopCycle);
     slot.animDelay = 0;
@@ -261,7 +262,8 @@ export function createBuildingLoopSystem(
         }
 
         if (cycled) {
-          slot.holder.visible = slot.loaded && !isRoadOpening(slot.z, (slot.extentZ || 2.0) + 0.3);
+          const inStPaulClearing = slot.side === -1 && Math.abs(slot.z - STPAUL_Z) <= 44;
+          slot.holder.visible = slot.loaded && !inStPaulClearing && !isRoadOpening(slot.z, (slot.extentZ || 2.0) + 0.3);
           applyLoopTint(slot, slot.loopCycle);
           triggerSpawnAnimation(slot, 0);
         }

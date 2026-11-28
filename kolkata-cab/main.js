@@ -22,6 +22,10 @@ import { createJettaTraffic } from './src/jetta.js';
 import { createBusTraffic } from './src/bus.js';
 import { createOpenWorldNetwork } from './src/openworld.js';
 import { createVictoriaMemorialLandmark } from './src/victoriaMemorial.js';
+import { createCollegeStreetCorridor } from './src/collegeStreet.js';
+import { createNetajiMonument } from './src/netajiMonument.js';
+import { createEdenGardensLandmark } from './src/edenGardens.js';
+import { createStPaulsCathedralLandmark } from './src/stPaulsCathedral.js';
 import { createPassengerSystem } from './src/passengers.js';
 import { createHud } from './src/ui.js';
 import { createTrafficSystem } from './src/traffic.js';
@@ -43,6 +47,14 @@ const openWorld = createOpenWorldNetwork(scene, CONFIG);
 openWorld.setNightMode(road.getTimeOfDay() === 'night');
 const victoriaMemorial = createVictoriaMemorialLandmark(scene);
 victoriaMemorial.setNightMode(road.getTimeOfDay() === 'night');
+const collegeStreet = createCollegeStreetCorridor(scene);
+collegeStreet.setNightMode(road.getTimeOfDay() === 'night');
+const netajiMonument = createNetajiMonument(scene);
+netajiMonument.setNightMode(road.getTimeOfDay() === 'night');
+const edenGardens = createEdenGardensLandmark(scene);
+edenGardens.setNightMode(road.getTimeOfDay() === 'night');
+const stPaulsCathedral = createStPaulsCathedralLandmark(scene);
+stPaulsCathedral.setNightMode(road.getTimeOfDay() === 'night');
 const taxi = createTaxi();
 scene.add(taxi);
 
@@ -186,6 +198,9 @@ const controls = {
   helpPanel: $('keyboardHelp'),
   indicatorLeft: $('indicatorLeft'),
   indicatorRight: $('indicatorRight'),
+  minimapCard: $('minimapCard'),
+  bigMapModal: $('bigMapModal'),
+  closeBigMap: $('closeBigMap'),
   brake: document.querySelector('.brake'),
   accelerator: document.querySelector('.accelerator'),
 };
@@ -314,7 +329,7 @@ function update(dt) {
   busTraffic?.update(state.lateral, state.z, state.speed, dt, isNight);
   pedestrians?.update(state.z, dt);
   passengers.update(state.lateral, state.z, state.speed, dt);
-  hud.update(passengers.getSnapshot(state.lateral, state.z), state.lateral, state.z);
+  hud.update(passengers.getSnapshot(state.lateral, state.z), state.lateral, state.z, state.heading);
   traffic.update(state.lateral, state.z, state.speed, dt, camera.position);
 
   if (controls.speed) controls.speed.textContent = String(Math.round(Math.abs(state.speed))).padStart(2, '0');
@@ -462,6 +477,16 @@ canvas?.addEventListener('pointerup', releaseLookPointer);
 canvas?.addEventListener('pointercancel', releaseLookPointer);
 canvas?.addEventListener('lostpointercapture', releaseLookPointer);
 
+function toggleBigMap(forceOpen = null) {
+  if (!controls.bigMapModal) return;
+  const shouldOpen = forceOpen === null ? controls.bigMapModal.hidden : Boolean(forceOpen);
+  controls.bigMapModal.hidden = !shouldOpen;
+}
+controls.minimapCard?.addEventListener('click', () => toggleBigMap(true));
+controls.closeBigMap?.addEventListener('click', () => toggleBigMap(false));
+controls.bigMapModal?.addEventListener('click', (event) => {
+  if (event.target === controls.bigMapModal) toggleBigMap(false);
+});
 controls.camera?.addEventListener('click', toggleCamera);
 controls.pause?.addEventListener('click', () => {
   state.paused = !state.paused;
@@ -506,6 +531,8 @@ window.addEventListener('keydown', (event) => {
     }
   }
   if (event.key.toLowerCase() === 'v' && !event.repeat) toggleCamera();
+  if (event.key.toLowerCase() === 'm' && !event.repeat) toggleBigMap();
+  if (event.key === 'Escape' && controls.bigMapModal && !controls.bigMapModal.hidden) toggleBigMap(false);
   if (event.key.toLowerCase() === 'p' && !event.repeat) controls.pause?.click();
   if (event.key.toLowerCase() === 'h' && !event.repeat) traffic.honk();
   if (event.key.toLowerCase() === 't' && !event.repeat) {
@@ -520,6 +547,10 @@ window.addEventListener('keydown', (event) => {
     road.setTimeOfDay(nextMode);
     openWorld?.setNightMode(nextMode === 'night');
     victoriaMemorial?.setNightMode(nextMode === 'night');
+    collegeStreet?.setNightMode(nextMode === 'night');
+    netajiMonument?.setNightMode(nextMode === 'night');
+    edenGardens?.setNightMode(nextMode === 'night');
+    stPaulsCathedral?.setNightMode(nextMode === 'night');
     traffic.setRainEnabled(nextMode !== 'day');
     renderer.toneMappingExposure = CONFIG.exposure;
     bloomPass.strength = CONFIG.bloomStrength;
@@ -598,5 +629,5 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight, false);
   composer.setSize(innerWidth, innerHeight);
 });
-showToast('SHIFT READY', 'Skip 1st right, take 2nd right, then 1st left for Victoria Memorial');
+showToast('SHIFT READY', '2nd right → 1st left: Victoria Memorial · 2nd left → 1st right: College Street');
 requestAnimationFrame(frame);

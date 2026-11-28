@@ -42,15 +42,35 @@
     <div class="toast glass-card" id="toast" aria-live="polite">SHIFT READY <span>Use Up or W to drive</span></div>
 
     <aside class="map-stack" aria-label="Map and camera controls">
-      <div class="minimap-card glass-card">
+      <button id="minimapCard" class="minimap-card glass-card" type="button" title="Expand full Kolkata map (M)">
         <canvas id="minimap" width="120" height="120" aria-label="Minimap"></canvas>
-        <span class="map-caption">HOWRAH &middot; ROUTE</span>
-      </div>
+        <span class="map-caption">MAP &middot; CLICK / M</span>
+      </button>
       <div class="camera-controls">
         <button id="cameraButton" class="glass-button" type="button" title="Switch camera (V)"><span id="viewLabel">CHASE CAM</span> <kbd>V</kbd></button>
         <button id="pauseButton" class="glass-button pause-button" type="button" title="Pause or resume the drive">&#9208; <span>PAUSE</span></button>
       </div>
     </aside>
+
+    <div id="bigMapModal" class="big-map-modal" hidden role="dialog" aria-modal="true" aria-label="Full Kolkata Route Map">
+      <div class="big-map-sheet glass-card">
+        <div class="big-map-header">
+          <div>
+            <span class="eyebrow">KOLKATA ROUTE MAP</span>
+            <strong id="bigMapSubtitle">YELLOW ARROW: YOUR CAB &middot; GREEN ROUTE: ACTIVE FARE</strong>
+          </div>
+          <button id="closeBigMap" class="glass-button big-map-close" type="button" aria-label="Close map (Esc / M)">&times; CLOSE <kbd>M</kbd></button>
+        </div>
+        <canvas id="bigMapCanvas" width="760" height="560" aria-label="Expanded city map"></canvas>
+        <div class="big-map-legend">
+          <span><i class="leg-dot cab-yellow"></i>Cab (Available)</span>
+          <span><i class="leg-dot cab-green"></i>Cab &amp; Route (On Trip)</span>
+          <span><i class="leg-dot pickup"></i>Passenger</span>
+          <span><i class="leg-dot victoria"></i>Victoria Memorial</span>
+          <span><i class="leg-dot college"></i>College Street</span>
+        </div>
+      </div>
+    </div>
 
     <section class="passenger-card glass-card" id="passengerCard" aria-label="Passenger information" hidden>
       <span class="eyebrow passenger-kicker">FARE REQUEST &middot; PARK STREET</span>
@@ -106,7 +126,7 @@
       <span><kbd>S</kbd> / <kbd>↓</kbd> Brake · hold to reverse</span>
       <span><kbd>A</kbd> / <kbd>D</kbd> Steer</span>
       <span><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd> Indicators</span>
-      <span><kbd>V</kbd> Camera · <kbd>P</kbd> Pause · <kbd>H</kbd> Horn</span>
+      <span><kbd>M</kbd> Big Map · <kbd>V</kbd> Camera · <kbd>P</kbd> Pause · <kbd>H</kbd> Horn</span>
     </aside>
   </main>
   <script type="importmap">

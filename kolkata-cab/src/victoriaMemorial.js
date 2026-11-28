@@ -8,7 +8,7 @@ import {
   VICTORIA_TURN_Z,
 } from './roadLayout.js';
 
-const MODEL_URL = './models/victoria_memorial.glb';
+const MODEL_URL = './models/victoria_tripo.glb';
 
 function makeGrassTexture() {
   const canvas = document.createElement('canvas');
@@ -163,9 +163,9 @@ function normalizeVictoriaModel(srcScene) {
   const size = new THREE.Vector3();
   box.getSize(size);
 
-  // Scale Victoria Memorial to realistic ~74m width
+  // Scale Victoria Memorial to realistic ~64m width
   const span = Math.max(size.x, size.z) || 1;
-  root.scale.multiplyScalar(74 / span);
+  root.scale.multiplyScalar(64 / span);
 
   wrapper.updateMatrixWorld(true);
   const scaled = new THREE.Box3().setFromObject(wrapper);
@@ -183,24 +183,28 @@ function normalizeVictoriaModel(srcScene) {
     wrapper.rotation.y = Math.PI / 2;
   }
 
+  const marbleMaterials = [];
   root.traverse((obj) => {
     if (!obj.isMesh) return;
     obj.castShadow = false;
     obj.receiveShadow = true;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    const upgraded = mats.map((orig) => {
-      if (!orig) return orig;
-      const mat = orig.clone();
-      if ('envMapIntensity' in mat) mat.envMapIntensity = 1.15;
-      if (mat.color && mat.color.r > 0.65 && mat.color.g > 0.65 && mat.color.b > 0.65) {
-        mat.roughness = Math.min(mat.roughness ?? 0.5, 0.42);
-      }
+    if (obj.geometry && !obj.geometry.attributes?.normal) {
+      obj.geometry.computeVertexNormals();
+    }
+    const origMats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    const cloned = origMats.map((orig) => {
+      const mat = orig
+        ? orig.clone()
+        : new THREE.MeshStandardMaterial({ color: 0xf8f5ec });
+      mat.side = THREE.DoubleSide;
+      if ('envMapIntensity' in mat) mat.envMapIntensity = 1.35;
+      marbleMaterials.push(mat);
       return mat;
     });
-    obj.material = Array.isArray(obj.material) ? upgraded : upgraded[0];
+    obj.material = Array.isArray(obj.material) ? cloned : cloned[0];
   });
 
-  return wrapper;
+  return { wrapper, marbleMaterials };
 }
 
 export function createVictoriaMemorialLandmark(scene) {
@@ -248,19 +252,29 @@ export function createVictoriaMemorialLandmark(scene) {
 
   // 2. Sandstone / terracotta pedestrian promenade in front of the gate (Pic 1)
   const promenadeMat = new THREE.MeshStandardMaterial({ map: makePromenadeTexture(), roughness: 0.84 });
-  const promenade = new THREE.Mesh(new THREE.PlaneGeometry(106, 20), promenadeMat);
+  const promenade = new THREE.Mesh(new THREE.PlaneGeometry(92, 20), promenadeMat);
   promenade.rotation.x = -Math.PI / 2;
   promenade.position.set(VICTORIA_ROAD_X, 0.015, VICTORIA_PLAZA_Z - 2);
   promenade.receiveShadow = true;
   group.add(promenade);
 
-  // 3. Expansive Maidan green lawn behind the gate (Pic 1 & Pic 2)
+  // 3. Expansive Maidan green lawn behind the gate + flanking Victoria Road approach (Pic 1 & Pic 2)
   const grassMat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.92 });
-  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(132, 122), grassMat);
+  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(96, 118), grassMat);
   lawn.rotation.x = -Math.PI / 2;
-  lawn.position.set(VICTORIA_ROAD_X, 0.014, VICTORIA_PLAZA_Z - 72);
+  lawn.position.set(VICTORIA_ROAD_X, 0.014, VICTORIA_PLAZA_Z - 70);
   lawn.receiveShadow = true;
   group.add(lawn);
+
+  const approachParkLen = Math.abs(VICTORIA_PLAZA_Z - VICTORIA_TURN_Z) - 14;
+  const approachParkZ = VICTORIA_TURN_Z - 11 - approachParkLen / 2;
+  for (const side of [-1, 1]) {
+    const park = new THREE.Mesh(new THREE.PlaneGeometry(36, approachParkLen), grassMat);
+    park.rotation.x = -Math.PI / 2;
+    park.position.set(VICTORIA_ROAD_X + side * (VICTORIA_ROAD_WIDTH / 2 + 21), 0.01, approachParkZ);
+    park.receiveShadow = true;
+    group.add(park);
+  }
 
   // 4. Low ornate wrought-iron fence + low arched central crest gate (Pic 1)
   const gateZ = VICTORIA_PLAZA_Z - 11;
@@ -313,21 +327,24 @@ export function createVictoriaMemorialLandmark(scene) {
   pool.position.set(VICTORIA_ROAD_X, 0.03, VICTORIA_PLAZA_Z - 31);
   group.add(pool);
 
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(78, 1.2, 48), stoneMat);
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(68, 1.2, 46), stoneMat);
   plinth.position.set(VICTORIA_ROAD_X, 0.6, VICTORIA_PLAZA_Z - 66);
   plinth.receiveShadow = true;
   group.add(plinth);
 
-  // 6. Real 3D GLB trees framing both sides of the Maidan lawn (Pic 1 & Pic 2)
+  // 6. Real 3D GLB trees filling the Maidan approach in front of Victoria & framing the lawn
   const treePositions = [
-    [-26, -24, 9.5, 0],
-    [-34, -40, 10.5, 1],
-    [-24, -56, 8.8, 2],
-    [26, -24, 9.8, 1],
-    [34, -42, 10.2, 0],
-    [24, -58, 9.0, 2],
-    [-16, -20, 6.2, 2],
-    [16, -20, 6.5, 0],
+    // Inner memorial garden
+    [-26, -24, 9.5, 0], [-34, -40, 10.5, 1], [-24, -56, 8.8, 2],
+    [26, -24, 9.8, 1], [34, -42, 10.2, 0], [24, -58, 9.0, 2],
+    [-16, -20, 6.2, 2], [16, -20, 6.5, 0],
+    // Maidan approach flanking Victoria Road (both sides in front of the gate)
+    [-12, 14, 8.2, 0], [-12, 28, 9.4, 1], [-12, 42, 7.8, 2],
+    [12, 14, 8.6, 1], [12, 28, 7.9, 2], [12, 42, 9.2, 0],
+    [-22, 10, 9.8, 1], [-24, 22, 8.5, 0], [-21, 36, 9.1, 1], [-26, 48, 8.4, 2],
+    [22, 10, 9.5, 0], [24, 22, 8.8, 1], [21, 36, 8.2, 2], [26, 48, 9.6, 0],
+    [-34, 16, 10.2, 0], [-36, 32, 9.0, 2], [-34, 46, 10.4, 1],
+    [34, 16, 10.0, 1], [36, 32, 9.4, 0], [34, 46, 8.9, 2],
   ];
   DEFAULT_TREE_MODELS.forEach((url, idx) => {
     loadGLTF(url)
@@ -345,14 +362,22 @@ export function createVictoriaMemorialLandmark(scene) {
       .catch(() => {});
   });
 
-  // 7. Architectural warm floodlight for night mode
-  const monumentLight = new THREE.PointLight(0xffe6b8, 30, 110, 1.2);
+  // 7. Silvery floodlight + approach light for night mode
+  const monumentLight = new THREE.PointLight(0xdce8ff, 34, 115, 1.2);
   monumentLight.position.set(VICTORIA_ROAD_X, 18, VICTORIA_PLAZA_Z - 40);
-  group.add(monumentLight);
+  const approachLight = new THREE.PointLight(0xffd89c, 16, 75, 1.4);
+  approachLight.position.set(VICTORIA_ROAD_X, 8, (VICTORIA_TURN_Z + VICTORIA_PLAZA_Z) / 2);
+  group.add(monumentLight, approachLight);
 
-  // Fallback white marble silhouette until victoria_memorial.glb loads
+  // Fallback white marble silhouette until victoria.glb loads
   const fallbackGroup = new THREE.Group();
-  const marbleMat = new THREE.MeshStandardMaterial({ color: 0xf2eee4, roughness: 0.42, metalness: 0.08 });
+  const marbleMat = new THREE.MeshStandardMaterial({
+    color: 0xf8f5ec,
+    emissive: 0xfff5dc,
+    emissiveIntensity: 0.16,
+    roughness: 0.34,
+    metalness: 0.08,
+  });
   const baseHall = new THREE.Mesh(new THREE.BoxGeometry(52, 12, 30), marbleMat);
   baseHall.position.set(0, 6, 0);
   const dome = new THREE.Mesh(new THREE.SphereGeometry(8.5, 16, 12), marbleMat);
@@ -361,19 +386,43 @@ export function createVictoriaMemorialLandmark(scene) {
   fallbackGroup.position.set(VICTORIA_ROAD_X, 1.2, VICTORIA_PLAZA_Z - 66);
   group.add(fallbackGroup);
 
+  let currentNight = true;
+  let loadedMarbleMats = [marbleMat];
+  function applyMarbleMode(isNight) {
+    currentNight = Boolean(isNight);
+    monumentLight.intensity = currentNight ? 34 : 0;
+    approachLight.intensity = currentNight ? 16 : 0;
+    for (const mat of loadedMarbleMats) {
+      if (currentNight) {
+        mat.color.setHex(0xe9eff8);
+        mat.emissive.setHex(0xcfdcf0);
+        mat.emissiveIntensity = 0.24;
+        mat.roughness = 0.28;
+        mat.metalness = 0.16;
+      } else {
+        mat.color.setHex(0xf9f6ee);
+        mat.emissive.setHex(0xfff5dc);
+        mat.emissiveIntensity = 0.16;
+        mat.roughness = 0.34;
+        mat.metalness = 0.08;
+      }
+    }
+  }
+  applyMarbleMode(currentNight);
+
   loadGLTF(MODEL_URL, { priority: 'high' })
     .then((gltf) => {
       group.remove(fallbackGroup);
-      const landmark = normalizeVictoriaModel(gltf.scene);
-      landmark.position.set(VICTORIA_ROAD_X, 1.2, VICTORIA_PLAZA_Z - 66);
-      group.add(landmark);
+      const { wrapper, marbleMaterials } = normalizeVictoriaModel(gltf.scene);
+      wrapper.position.set(VICTORIA_ROAD_X, 1.2, VICTORIA_PLAZA_Z - 66);
+      group.add(wrapper);
+      loadedMarbleMats = marbleMaterials;
+      applyMarbleMode(currentNight);
     })
     .catch((err) => console.warn('[victoriaMemorial.js] Failed to load model:', err));
 
   return {
     group,
-    setNightMode(isNight) {
-      monumentLight.intensity = isNight ? 32 : 0;
-    },
+    setNightMode: applyMarbleMode,
   };
 }

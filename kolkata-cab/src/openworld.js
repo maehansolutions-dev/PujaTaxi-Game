@@ -372,7 +372,7 @@
 import * as THREE from 'three';
 import { DEFAULT_BUILDING_MODELS } from './buildings.js';
 import { DEFAULT_TREE_MODELS, normalizeTreeModel } from './trees.js';
-import { ALLEY_LENGTH, ALLEY_WIDTH, CROSS_STREET_LENGTH, CROSS_STREET_WIDTH, ROAD_ALLEY_OFFSET, ROAD_BLOCK_SPACING, VICTORIA_PLAZA_Z, VICTORIA_ROAD_WIDTH, VICTORIA_ROAD_X, VICTORIA_TURN_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
+import { ALLEY_LENGTH, ALLEY_WIDTH, COLLEGE_CROSSING_Z, COLLEGE_STREET_WIDTH, COLLEGE_STREET_X, COLLEGE_TURN_Z, CROSS_STREET_LENGTH, CROSS_STREET_WIDTH, EDEN_X, EDEN_Z, NETAJI_CROSSING_Z, ROAD_ALLEY_OFFSET, ROAD_BLOCK_SPACING, STPAUL_X, STPAUL_Z, VICTORIA_PLAZA_Z, VICTORIA_ROAD_WIDTH, VICTORIA_ROAD_X, VICTORIA_TURN_Z, isRoadOpening, roadAngle, roadCenterX } from './roadLayout.js';
 import { loadGLTF } from './gltfCache.js';
 
 const INTERSECTION_SPACING = ROAD_BLOCK_SPACING;
@@ -625,18 +625,24 @@ export function createOpenWorldNetwork(scene, config) {
   const practicalLights = [];
   const inVictoriaZone = (wx, wz) =>
     (Math.abs(wx - VICTORIA_ROAD_X) <= 14 && wz <= VICTORIA_TURN_Z - 4 && wz >= VICTORIA_PLAZA_Z) ||
-    (wx >= 14 && wx <= 122 && wz <= VICTORIA_PLAZA_Z + 8 && wz >= VICTORIA_PLAZA_Z - 125);
+    (wx >= 44 && wx <= 150 && wz <= VICTORIA_PLAZA_Z + 8 && wz >= VICTORIA_PLAZA_Z - 125);
   const isVictoriaOpening = (wx, wz) => Math.abs(wx - VICTORIA_ROAD_X) <= VICTORIA_ROAD_WIDTH / 2 + 4 && Math.abs(wz - VICTORIA_TURN_Z) <= 14;
+  const inCollegeZone = (wx, wz) => wx <= -46 && wx >= -125 && wz <= COLLEGE_TURN_Z - 4 && wz >= COLLEGE_CROSSING_Z - 24;
+  const isCollegeOpening = (wx, wz) => Math.abs(wx - COLLEGE_STREET_X) <= COLLEGE_STREET_WIDTH / 2 + 4 && Math.abs(wz - COLLEGE_TURN_Z) <= 14;
+  const inEdenZone = (wx, wz) => wx >= 24 && wx <= 142 && wz <= EDEN_Z + 46 && wz >= EDEN_Z - 46;
   for (let i = -5; i <= 3; i++) {
     const z = i * INTERSECTION_SPACING;
     const nodeGroup = new THREE.Group();
     nodeGroup.position.set(0, 0, z);
     group.add(nodeGroup);
 
-    // Wide cross street extending ±140m along X (clip +X wing at z = -160 so it never crosses Victoria's lawn)
+    // Wide cross street extending ±140m along X (clip +X at z=-160 for Victoria, -X for College St at i<=-2)
     const clipVictoriaCross = i === -2;
-    const crossLen = clipVictoriaCross ? CROSS_STREET_LENGTH / 2 + 12 : CROSS_STREET_LENGTH;
-    const crossOffsetX = clipVictoriaCross ? -CROSS_STREET_LENGTH / 4 + 6 : 0;
+    const clipCollegeSide = i <= -2 && i >= -5;
+    const crossLeftX = clipCollegeSide ? -46 : -CROSS_STREET_LENGTH / 2;
+    const crossRightX = clipVictoriaCross ? 12 : CROSS_STREET_LENGTH / 2;
+    const crossLen = crossRightX - crossLeftX;
+    const crossOffsetX = (crossLeftX + crossRightX) / 2;
     const crossStreet = new THREE.Mesh(new THREE.PlaneGeometry(crossLen, CROSS_STREET_WIDTH), mainStreetMat);
     crossStreet.rotation.x = -Math.PI / 2;
     crossStreet.position.set(crossOffsetX, 0.008, 0);
@@ -650,6 +656,7 @@ export function createOpenWorldNetwork(scene, config) {
     for (const sideZ of [-1, 1]) {
       for (const dirX of [-1, 1]) {
         if (clipVictoriaCross && dirX === 1) continue;
+        if (clipCollegeSide && dirX === -1) continue;
         const sidewalk = new THREE.Mesh(new THREE.PlaneGeometry(crossWingLen, 4.4), sidewalkMat);
         sidewalk.rotation.x = -Math.PI / 2;
         sidewalk.position.set(dirX * crossWingCenter, 0.006, sideZ * 8.7);
@@ -658,20 +665,22 @@ export function createOpenWorldNetwork(scene, config) {
         const curb = new THREE.Mesh(new THREE.BoxGeometry(crossWingLen, 0.2, 0.28), curbMat);
         curb.position.set(dirX * crossWingCenter, 0.1, sideZ * 6.65);
         curb.castShadow = curb.receiveShadow = true;
-        if (!(i === -1 && sideZ === -1 && dirX === 1)) nodeGroup.add(curb);
+        if (!(i === -1 && sideZ === -1)) nodeGroup.add(curb);
       }
     }
     if (i === -1) {
-      // Leave the x = VICTORIA_ROAD_X left-turn opening clear on the north curb of z = -80
-      const gapHalf = VICTORIA_ROAD_WIDTH / 2 + 0.4;
-      const seg1Len = (VICTORIA_ROAD_X - gapHalf) - aveEdge;
-      const seg2Len = (CROSS_STREET_LENGTH / 2) - (VICTORIA_ROAD_X + gapHalf);
-      for (const [cx, len] of [[aveEdge + seg1Len / 2, seg1Len], [VICTORIA_ROAD_X + gapHalf + seg2Len / 2, seg2Len]]) {
-        if (len > 1) {
-          const c = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 0.28), curbMat);
-          c.position.set(cx, 0.1, -6.65);
-          c.receiveShadow = true;
-          nodeGroup.add(c);
+      // Leave both x = VICTORIA_ROAD_X (+64) and x = COLLEGE_STREET_X (-76) turn openings clear on north curb of z = -80
+      for (const [sign, turnX, turnW] of [[1, VICTORIA_ROAD_X, VICTORIA_ROAD_WIDTH], [-1, Math.abs(COLLEGE_STREET_X), COLLEGE_STREET_WIDTH]]) {
+        const gapHalf = turnW / 2 + 0.4;
+        const seg1Len = (turnX - gapHalf) - aveEdge;
+        const seg2Len = (CROSS_STREET_LENGTH / 2) - (turnX + gapHalf);
+        for (const [cx, len] of [[aveEdge + seg1Len / 2, seg1Len], [turnX + gapHalf + seg2Len / 2, seg2Len]]) {
+          if (len > 1) {
+            const c = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 0.28), curbMat);
+            c.position.set(sign * cx, 0.1, -6.65);
+            c.receiveShadow = true;
+            nodeGroup.add(c);
+          }
         }
       }
     }
@@ -701,7 +710,12 @@ export function createOpenWorldNetwork(scene, config) {
           for (const dirX of [-1, 1]) {
             const wx = dirX * distance;
             const wz = z + roadOffset + sideZ * (clearEdgeZ + 5);
-            if (inVictoriaZone(wx, wz) || (sideZ === -1 && isVictoriaOpening(wx, z + roadOffset))) continue;
+            if (
+              inVictoriaZone(wx, wz) ||
+              inCollegeZone(wx, wz) ||
+              inEdenZone(wx, wz) ||
+              (sideZ === -1 && (isVictoriaOpening(wx, z + roadOffset) || isCollegeOpening(wx, z + roadOffset)))
+            ) continue;
             const root = new THREE.Group();
             root.position.set(wx, 0, roadOffset + sideZ * (clearEdgeZ + 5));
             nodeGroup.add(root);
@@ -742,10 +756,13 @@ export function createOpenWorldNetwork(scene, config) {
     signalGroup.add(headMesh);
     nodeGroup.add(signalGroup);
 
-    // Narrow alleyway halfway between cross streets extending ±110m along X (clip +X wing inside Victoria zone)
-    const clipVictoriaAlley = i === -1 || i === -2;
-    const alleyDrawLen = clipVictoriaAlley ? ALLEY_LENGTH / 2 + 12 : ALLEY_LENGTH;
-    const alleyOffsetX = clipVictoriaAlley ? -ALLEY_LENGTH / 4 + 6 : 0;
+    // Narrow alleyway halfway between cross streets extending ±110m along X (clip +X in Victoria/Eden, -X in College St)
+    const clipVictoriaAlley = i === -1 || i === -2 || i === -4;
+    const clipCollegeAlley = i <= -1 && i >= -4;
+    const alleyLeftX = clipCollegeAlley ? -46 : -ALLEY_LENGTH / 2;
+    const alleyRightX = clipVictoriaAlley ? 12 : ALLEY_LENGTH / 2;
+    const alleyDrawLen = alleyRightX - alleyLeftX;
+    const alleyOffsetX = (alleyLeftX + alleyRightX) / 2;
     const alley = new THREE.Mesh(new THREE.PlaneGeometry(alleyDrawLen, ALLEY_WIDTH), alleyMat);
     alley.rotation.x = -Math.PI / 2;
     alley.position.set(alleyOffsetX, 0.007, -ALLEY_SPACING);
@@ -757,6 +774,7 @@ export function createOpenWorldNetwork(scene, config) {
     for (const sideZ of [-1, 1]) {
       for (const dirX of [-1, 1]) {
         if (clipVictoriaAlley && dirX === 1) continue;
+        if (clipCollegeAlley && dirX === -1) continue;
         const alleyWalk = new THREE.Mesh(new THREE.PlaneGeometry(alleyWingLen, 2.2), sidewalkMat);
         alleyWalk.rotation.x = -Math.PI / 2;
         alleyWalk.position.set(dirX * alleyWingCenter, 0.006, -ALLEY_SPACING + sideZ * 4.2);
@@ -799,7 +817,12 @@ export function createOpenWorldNetwork(scene, config) {
         const walkZ = roadOffset + sideZ * (roadOffset ? 4.2 : 8.4);
         for (let x = -maxX; x <= maxX; x += step) {
           if (Math.abs(x) < 16) continue;
-          if (inVictoriaZone(x, z + walkZ) || (sideZ === -1 && isVictoriaOpening(x, z + roadOffset))) continue;
+          if (
+            inVictoriaZone(x, z + walkZ) ||
+            inCollegeZone(x, z + walkZ) ||
+            inEdenZone(x, z + walkZ) ||
+            (sideZ === -1 && (isVictoriaOpening(x, z + roadOffset) || isCollegeOpening(x, z + roadOffset)))
+          ) continue;
           const kind = Math.abs(Math.round(x / step) + i) % 4;
           if (kind === 0) {
             sideBoxes.push({ x, y: 0.52, z: walkZ, sx: 1.5, sy: 1.0, sz: 1.1, color: stallColors[Math.abs(i) % stallColors.length] });
@@ -838,7 +861,12 @@ export function createOpenWorldNetwork(scene, config) {
     for (const roadOffset of [0, -ALLEY_SPACING]) {
       for (const sideZ of [-1, 1]) {
         for (const x of [-68, 68]) {
-          if (inVictoriaZone(x, z + roadOffset) || (sideZ === -1 && isVictoriaOpening(x, z + roadOffset))) continue;
+          if (
+            inVictoriaZone(x, z + roadOffset) ||
+            inCollegeZone(x, z + roadOffset) ||
+            inEdenZone(x, z + roadOffset) ||
+            (sideZ === -1 && (isVictoriaOpening(x, z + roadOffset) || isCollegeOpening(x, z + roadOffset)))
+          ) continue;
           const root = new THREE.Group();
           root.position.set(x, 0, roadOffset + sideZ * (roadOffset ? 5.0 : 8.7));
           nodeGroup.add(root);
@@ -847,7 +875,12 @@ export function createOpenWorldNetwork(scene, config) {
           if (treeTemplates[slot.modelIndex]) pendingTreeBuilds.push(slot);
         }
         for (const x of [-105, -52, 52, 105]) {
-          if (inVictoriaZone(x, z + roadOffset) || (sideZ === -1 && isVictoriaOpening(x, z + roadOffset))) continue;
+          if (
+            inVictoriaZone(x, z + roadOffset) ||
+            inCollegeZone(x, z + roadOffset) ||
+            inEdenZone(x, z + roadOffset) ||
+            (sideZ === -1 && (isVictoriaOpening(x, z + roadOffset) || isCollegeOpening(x, z + roadOffset)))
+          ) continue;
           const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 6.8, 7), postMat);
           pole.position.set(x, 3.4, roadOffset + sideZ * (roadOffset ? 4.8 : 7.25));
           pole.castShadow = false;
@@ -870,6 +903,10 @@ export function createOpenWorldNetwork(scene, config) {
   }
 
   function isDrivable(x, z) {
+    // Keep taxi outside the circular Netaji statue pedestal at the z = -240 crossing
+    if (Math.hypot(x - roadCenterX(NETAJI_CROSSING_Z), z - NETAJI_CROSSING_Z) < 3.1) return false;
+    // Keep taxi outside St. Paul's Cathedral compound (x = -36..-104, z = -488..-552)
+    if (x <= -34 && x >= -106 && z <= STPAUL_Z + 38 && z >= STPAUL_Z - 38) return false;
     const lx = x - roadCenterX(z);
     const mainHalfWidth = config.roadHalfWidth - config.collisionHalfWidth;
     if (Math.abs(lx) <= mainHalfWidth) return true;
@@ -889,6 +926,17 @@ export function createOpenWorldNetwork(scene, config) {
       z >= VICTORIA_PLAZA_Z - 3
     ) return true;
     if (Math.abs(x - VICTORIA_ROAD_X) <= 18 && z <= VICTORIA_PLAZA_Z + 4 && z >= VICTORIA_PLAZA_Z - 7) return true;
+
+    // College Street corridor (turn left at z = -80, then 1st right at x = -76 northbound) & College St Crossing
+    if (
+      Math.abs(x - COLLEGE_STREET_X) <= (COLLEGE_STREET_WIDTH - config.collisionHalfWidth * 2) / 2 &&
+      z <= COLLEGE_TURN_Z + 6 &&
+      z >= COLLEGE_CROSSING_Z - 12
+    ) return true;
+    if (Math.abs(x - COLLEGE_STREET_X) <= 36 && z <= COLLEGE_CROSSING_Z + 2 && z >= COLLEGE_CROSSING_Z - 14) return true;
+
+    // Eden Gardens East Perimeter Road (x = 126, connecting z = -320 and z = -400 around the stadium)
+    if (Math.abs(x - 126) <= 5.0 && z <= -314 && z >= -406) return true;
 
     return false;
   }
@@ -975,6 +1023,13 @@ export function createOpenWorldNetwork(scene, config) {
         n.nodeGroup.position.set(roadCenterX(n.z), 0, n.z);
         n.nodeGroup.rotation.y = roadAngle(n.z);
         n.nodeGroup.visible = Math.abs(n.z - playerZ) < 200;
+        // Hide recycled west-side (-X) buildings/stalls/alley meshes when a node overlaps St. Paul's Cathedral (z = -520)
+        const overlapsStPaul = Math.abs(n.z - (-480)) < 14 || Math.abs(n.z - (-560)) < 14;
+        for (const child of n.nodeGroup.children) {
+          if (child.position.x < -14) {
+            child.visible = !overlapsStPaul;
+          }
+        }
 
         const nextLight = getIntersectionLight(n.index, elapsed);
         if (nextLight !== n.currentLight) {

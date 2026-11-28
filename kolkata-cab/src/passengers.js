@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadGLTF } from './gltfCache.js';
-import { roadAngle, roadCenterX } from './roadLayout.js';
+import { roadAngle, roadCenterX, VICTORIA_PLAZA_Z, VICTORIA_ROAD_X, VICTORIA_TURN_Z } from './roadLayout.js';
 
 const names = ['Ananya', 'Arjun', 'Moumita', 'Ritwik', 'Soham', 'Ishita', 'Debashis', 'Riya'];
-const places = ['Howrah Station', 'College Street', 'Esplanade', 'Park Street', 'Burrabazar', 'Prinsep Ghat', 'Shyambazar', 'Sealdah'];
+const places = ['Victoria Memorial', 'Howrah Station', 'College Street', 'Victoria Memorial', 'Park Street', 'Esplanade', 'Prinsep Ghat', 'Shyambazar'];
 const quotes = [
-  'Dada, please take the quickest route.',
+  'Dada, please take me to Victoria Memorial!',
   'Could you drop me near the main entrance?',
   'Please avoid the busiest crossing if you can.',
-  'I am in a bit of a hurry, dada.',
+  'Dada, Victoria Memorial gate please — I am in a hurry!',
 ];
 
 const HITCHHIKER_MODEL_URL = './models/samp_person2.glb';
@@ -164,13 +164,22 @@ export function createPassengerSystem(scene, config, onEvent = () => {}) {
   }
 
   function startTrip(playerX, playerZ) {
-    const id = serial + Math.floor(Math.random() * 4);
-    const destination = labels(id).place;
-    const lengthGameMetres = THREE.MathUtils.randFloat(6, 12);
-    const distanceUnits = lengthGameMetres * config.worldUnitsPerGameMetre;
-    const z = playerZ - distanceUnits;
-    const x = roadCenterX(z) + passenger.side * (config.roadHalfWidth + config.footpathWidth * 0.58);
-    const fare = lengthGameMetres * config.fareRsPerGameMetre;
+    const pickVictoria = serial % 2 === 1 || Math.random() < 0.4;
+    const destination = pickVictoria ? 'Victoria Memorial' : labels(serial + Math.floor(Math.random() * 4)).place;
+    let x;
+    let z;
+    let distanceUnits;
+    if (destination === 'Victoria Memorial') {
+      x = VICTORIA_ROAD_X;
+      z = VICTORIA_PLAZA_Z;
+      distanceUnits = Math.abs(playerZ - VICTORIA_TURN_Z) + Math.abs(VICTORIA_ROAD_X - playerX) + Math.abs(VICTORIA_TURN_Z - VICTORIA_PLAZA_Z);
+    } else {
+      const lengthGameMetres = THREE.MathUtils.randFloat(6, 12);
+      distanceUnits = lengthGameMetres * config.worldUnitsPerGameMetre;
+      z = playerZ - distanceUnits;
+      x = roadCenterX(z) + passenger.side * (config.roadHalfWidth + config.footpathWidth * 0.58);
+    }
+    const fare = Math.round((distanceUnits / config.worldUnitsPerGameMetre) * config.fareRsPerGameMetre);
     trip = { destination, x, z, fare, distance: distanceUnits };
     boarding = {
       startX: passenger.x,
